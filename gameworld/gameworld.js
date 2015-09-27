@@ -7,13 +7,33 @@ function GameCanvas(width, height, groundLevel) {
 	this.canvasWidth = width || 800;
 	this.canvasHeight = height || 600;
 
+	// Parental properties
+	this.npcList = new Array();
+	this.platformList = new Array();
+
 	// Physics properties
 	this.groundLevel = groundLevel || 50;
 	this.images = {};
 	this.numResourcesLoaded = 0;
 	this.startDrawingLimit = 9; //images loaded
-	this.npcList = new Array();
 	this.numFramesDrawn = 0;
+
+	// Gravity
+	this.gravityRate = 25;
+	this.gravityAmount = 4;
+	this.gravityInterval = setInterval(function(){
+		thisCanvas.tick_gravity();
+	}, this.gravityRate);
+
+	/** Reduce each character's x height until it
+		reaches the ground. */
+	this.tick_gravity = function() {
+		for (ii = 0; ii < this.npcList.length; ii++) {
+			if (this.npcList[ii].yloc > 0) {
+				this.npcList[ii].yloc -= this.gravityAmount;
+			}
+		}
+	}
 
 	// Frames per second properties
 	this.fps = 30;
@@ -45,6 +65,14 @@ function GameCanvas(width, height, groundLevel) {
 		this.npcList.push(newNPC);
 
 		return newNPC;
+	}
+
+	/** Add a platform object to the gameCanvas. */
+	this.add_platform = function(xStart, xEnd, yHeight) {
+		newPlatform = new GamePlatform(this, xStart, xEnd, yHeight);
+		this.platformList.push(newPlatform);
+
+		return newPlatform;
 	}
 
 	/** Load an image to HTML from the /images/ folder. 
@@ -87,7 +115,13 @@ function GameCanvas(width, height, groundLevel) {
 		// Draw each character bound to this world
 		for (ii = 0; ii < this.npcList.length; ii++) {
 			characterToDraw = this.npcList[ii];
-			characterToDraw.draw_character(this.context);
+			characterToDraw.draw_character();
+		}
+
+		// Draw each platform bound to this world
+		for (ii = 0; ii < this.platformList.length; ii++) {
+			platformToDraw = this.platformList[ii];
+			platformToDraw.draw_platform();
 		}
 	}
 	
@@ -109,6 +143,37 @@ function GameCanvas(width, height, groundLevel) {
 }
 
 
+
+/** Represents an in-game platform. */
+function GamePlatform(gameCanvas, xStart, xEnd, yHeight) {
+	// Positional properties
+	this.gameCanvas = gameCanvas
+	this.xStart = xStart;
+	this.xEnd = xEnd;
+	this.yHeight = yHeight;
+
+	/** Draw this platform on the canvas. */
+	this.draw_platform = function() {
+		// Get generic properties to gameWorld
+		var gameCanvas = this.gameCanvas,
+			canvasHeight = gameCanvas.canvasHeight,
+		 	groundLevel = canvasHeight - gameCanvas.groundLevel;
+
+	 	// Translate cartesian properties into gameCanvas
+	 	platformHeight = groundLevel - this.yHeight;
+
+		// Draw the platform on the canvas
+		context = gameCanvas.context;
+		context.beginPath();
+		context.moveTo(this.xStart, platformHeight);
+		context.lineTo(this.xEnd, platformHeight);
+		context.stroke();
+		context.closePath();
+	}
+}
+
+
+
 /** Represents an in-game character. */
 function GameCharacter(gameCanvas, xloc, yloc) {
 	var thisChar = this;
@@ -124,9 +189,9 @@ function GameCharacter(gameCanvas, xloc, yloc) {
 	this.isJumping = false;
 
 	// Positional properties
-	this.gameCanvas = gameCanvas
+	this.gameCanvas = gameCanvas;
 	this.xloc = xloc || 100;
-	this.yloc = yloc || 500;
+	this.yloc = yloc || 0;
 
 	// Movement properties
 	this.stepAmt = 12;
@@ -216,26 +281,21 @@ function GameCharacter(gameCanvas, xloc, yloc) {
 	}
 
 	/** Draw this character on the canvas. */
-	this.draw_character = function(context) {
+	this.draw_character = function() {
 		var gameCanvas = this.gameCanvas,
 			canvasWidth = gameCanvas.canvasWidth,
-			canvasHeight = gameCanvas.canvasHeight;
+			canvasHeight = gameCanvas.canvasHeight,
 		 	groundLevel = canvasHeight - gameCanvas.groundLevel,
 		 	characterImages = this.characterImages,
 		 	xx = this.xloc,
-			yy = this.yloc,
 		 	breathOffset = this.breathAmt;
 
 	 	// Draw the character in a left position if facing left
  		//this.gameCanvas.context.translate(this.gameCanvas.width, 0);
 	 	//this.gameCanvas.context.scale(-1, 1);
 
-		// Adjust character vertical height if jumping
-	 	if (this.isJumping) {
-	 		jumpOffset = -this.jumpHeight+6;
-	 	} else {
-	 		jumpOffset = 0;
-	 	}
+	 	// Set character y position relative to game world
+	 	yy = groundLevel - this.yloc;
 
 /*
 		// PUT LINES 250 - 292 INTO LOOPS
@@ -254,7 +314,7 @@ function GameCharacter(gameCanvas, xloc, yloc) {
 			imagesToLoad.push(characterImages[5]);
 		}
 
-		this.draw_all_images(imagesToLoad, xx, groundLevel, jumpOffset, breathOffset);
+		this.draw_all_images(imagesToLoad, xx, groundLevel, breathOffset);
 */
 
 		// Draw the character's shadow
@@ -266,56 +326,52 @@ function GameCharacter(gameCanvas, xloc, yloc) {
 
 		// Draw the character's back arm
 		if (this.isJumping) {
- 			this.draw_image(characterImages[8], xx, groundLevel, jumpOffset, breathOffset);
+ 			this.draw_image(characterImages[8], xx, yy, breathOffset);
 		} else {
- 			this.draw_image(characterImages[7], xx, groundLevel, jumpOffset, breathOffset);
+ 			this.draw_image(characterImages[7], xx, yy, breathOffset);
 		}
 		
 		// Draw the character's legs
 		if (this.isJumping) {
- 			this.draw_image(characterImages[4], xx, groundLevel, jumpOffset, 0);
+ 			this.draw_image(characterImages[4], xx, yy, 0);
 		} else {
- 			this.draw_image(characterImages[3], xx, groundLevel, jumpOffset, 0);
+ 			this.draw_image(characterImages[3], xx, yy, 0);
 		}
 
 		// Draw the character's torso
- 		this.draw_image(characterImages[2], xx, groundLevel, jumpOffset, 0);
+ 		this.draw_image(characterImages[2], xx, yy, 0);
 
  		// Draw the character's head
- 		this.draw_image(characterImages[1], xx, groundLevel, jumpOffset, breathOffset);
+ 		this.draw_image(characterImages[1], xx, yy, breathOffset);
 
  		// Draw the character's hair
- 		this.draw_image(characterImages[0], xx, groundLevel, jumpOffset, breathOffset);
+ 		this.draw_image(characterImages[0], xx, yy, breathOffset);
 		
 		// Draw the character's front arm
 		if (this.isJumping) {
- 			this.draw_image(characterImages[6], xx, groundLevel, jumpOffset, breathOffset);
+ 			this.draw_image(characterImages[6], xx, yy, breathOffset);
 		} else {
- 			this.draw_image(characterImages[5], xx, groundLevel, jumpOffset, breathOffset);
+ 			this.draw_image(characterImages[5], xx, yy, breathOffset);
 		}
 
 		// Draw the character's eyes
-	 	eyeHeight = groundLevel-103-breathOffset;
-	 	if (this.isJumping) {
-			eyeHeight -= this.jumpHeight-6;
-	 	}
+	 	eyeHeight = yy-103-breathOffset;
 		this.draw_ellipse(xx+46, eyeHeight, 8, this.curEyeHeight);
 		this.draw_ellipse(xx+58, eyeHeight, 8, this.curEyeHeight);
 	}
 
 	/** Draw all images passed based on the character's current state. */
-	this.draw_all_images = function(imagesToDraw, xPos, groundLevel, jumpOffset, breathOffset) {
+	this.draw_all_images = function(imagesToDraw, xPos, groundLevel, breathOffset) {
 	 	for (ii=0; ii<imagesToDraw.length; ii++) {
-	 		this.draw_image(imagesToDraw[ii], xPos, groundLevel, jumpOffset, breathOffset);
+	 		this.draw_image(imagesToDraw[ii], xPos, groundLevel, breathOffset);
 	 	}
 	}
 
 	/** Draw a single image based on imageArguments, etc. */
-	this.draw_image = function(imageArguments, xPos, yPos, jumpOffset, breathOffset) {
+	this.draw_image = function(imageArguments, xPos, yPos, breathOffset) {
  		imageToDraw = this.gameCanvas.images[imageArguments["imageID"]];
  		drawWidth = xPos + imageArguments["xOffset"];
- 		drawHeight = (yPos - imageArguments["yOffset"]
- 					  + jumpOffset - breathOffset);
+ 		drawHeight = (yPos - imageArguments["yOffset"] - breathOffset);
  		this.gameCanvas.context.drawImage(imageToDraw, drawWidth, drawHeight);
 	}
 
@@ -385,13 +441,20 @@ function GameCharacter(gameCanvas, xloc, yloc) {
 	this.start_jumping = function() {
 		if (!this.isJumping) {
 			this.isJumping = true;
-			this.jumpTimeout = setTimeout(thisChar.land_jump, 800);
+			this.yloc += this.jumpHeight;
+			this.jumpEndInterval = setInterval(function(){
+				if (thisChar.yloc <= 0) {
+					thisChar.land_jump();
+				}
+			}, 50);
 		}
 	}
 
 	/** Land after completing a jump. */
 	this.land_jump = function() {
 		thisChar.isJumping = false;
+		thisChar.yloc = 0;
+		clearInterval(thisChar.jumpEndInterval);
 		if (thisChar.isMoving == false) {
 			thisChar.slow_inertia();
 		}
@@ -463,13 +526,16 @@ window.onload = function () {
 	gameWorld.prepare_canvas(document.getElementById("canvas-div"));
 	gameWorld.add_fps();
 
+	// Add environment objects to the game world
+	gameWorld.add_platform(xStart=300, xEnd=600, yHeight=100);
+
 	// Add one player and two NPCs to the world
-	player1 = gameWorld.add_npc(0);
-	npc1 = gameWorld.add_npc(400);
+	player1 = gameWorld.add_npc(100);
+	npc1 = gameWorld.add_npc(400, 200);
 	npc2 = gameWorld.add_npc(650);
 
     // Bind keys for jumping
-    Mousetrap.bind(['up','space'], function(e) {
+    Mousetrap.bind(['w', 'up', 'space'], function(e) {
     	if (e.preventDefault()) {
     		e.preventDefault();
     	} else {
@@ -480,7 +546,7 @@ window.onload = function () {
     });
 
     // Bind keys for crouching
-    Mousetrap.bind('down', function(e) {
+    Mousetrap.bind(['s', 'down'], function(e) {
     	if (e.preventDefault()) {
     		e.preventDefault();
     	} else {
@@ -492,28 +558,28 @@ window.onload = function () {
     });
 
     // Bind keys for moving left
-    Mousetrap.bind('left', function() { 
+    Mousetrap.bind(['a', 'left'], function() { 
     	console.log('left');
 		player1.isMoving = true;
     	player1.isFacingLeft = true;
 		player1.isWalking = true;
         player1.start_walking();
     });
-    Mousetrap.bind('left', function() {
+    Mousetrap.bind(['a', 'left'], function() {
     	console.log('leftup');
 		player1.isMoving = false;
 		player1.slow_inertia();
     }, 'keyup');
 
     // Bind keys for moving right
-    Mousetrap.bind('right', function() {
+    Mousetrap.bind(['d', 'right'], function() {
     	console.log('right');
 		player1.isMoving = true;
     	player1.isFacingLeft = false;
 		player1.isWalking = true;
         player1.start_walking();
     });
-    Mousetrap.bind('right', function() {
+    Mousetrap.bind(['d', 'right'], function() {
     	console.log('rightup');
 		player1.isMoving = false;
 		player1.slow_inertia();
