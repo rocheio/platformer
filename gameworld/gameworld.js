@@ -196,28 +196,25 @@ function GameCharacter(gameCanvas, xloc, yloc) {
 	// Movement properties
 	this.stepAmt = 12;
 	this.stepsPerSecond = 30;
+	this.timeBeforeMovementStop = 200;
 	this.jumpHeight = 150;
-	this.movementPadding = 100;
 	this.runMultiplier = 2;
 
-	// Breathing properties
+	/** Breathing properties */
 	this.breathDirection = 1;
 	this.breathInc = 0.1;
 	this.breathAmt = 0;
 	this.breathMax = 2;
+	this.breathInterval = setInterval(function(){
+		thisChar.update_breath();
+	}, 1000/this.gameCanvas.fps);
 
-	// Blinking properties
+	/** Blinking properties */
 	this.maxEyeHeight = 14;
 	this.curEyeHeight = this.maxEyeHeight;
 	this.eyeOpenTime = 0;
 	this.timeBtwBlinks = 4000;
 	this.blinkUpdateTime = 200;
-
-	// Character intervals
-	this.breathInterval = setInterval(function(){
-		thisChar.update_breath();
-	}, 1000/this.gameCanvas.fps);
-
 	this.blinkInterval = setInterval(function(){
 		thisChar.update_blink();
 	}, this.blinkUpdateTime);
@@ -452,10 +449,10 @@ function GameCharacter(gameCanvas, xloc, yloc) {
 
 	/** Land after completing a jump. */
 	this.land_jump = function() {
-		thisChar.isJumping = false;
 		thisChar.yloc = 0;
+		thisChar.isJumping = false;
 		clearInterval(thisChar.jumpEndInterval);
-		if (thisChar.isMoving == false) {
+		if (thisChar.isMoving === false) {
 			thisChar.slow_inertia();
 		}
 	}
@@ -464,6 +461,7 @@ function GameCharacter(gameCanvas, xloc, yloc) {
 	this.start_walking = function() {
     	clearTimeout(this.stopMovingTimeout);
 		this.step_forward();
+
 		if (this.isWalking) {
 			clearInterval(this.stepInterval);
 			this.stepInterval = setInterval(function(){
@@ -502,16 +500,17 @@ function GameCharacter(gameCanvas, xloc, yloc) {
 
 	/** Finish up any remaining movement. */
 	this.slow_inertia = function() {
+		this.isMoving = false;
 		this.stopMovingTimeout = setTimeout(function(){
 			if (!thisChar.isJumping) {
 				thisChar.stop_moving();
 			}
-		}, this.movementPadding);
+		}, this.timeBeforeMovementStop);
 	}
 
 	/** Stop all movement. */
 	this.stop_moving = function() {
-		if (!thisChar.isMoving) {
+		if (!this.isMoving) {
 			clearInterval(this.stepInterval);
 			this.isWalking = false;
 			this.isRunning = false;
@@ -534,56 +533,54 @@ window.onload = function () {
 	npc1 = gameWorld.add_npc(400, 200);
 	npc2 = gameWorld.add_npc(650);
 
-    // Bind keys for jumping
-    Mousetrap.bind(['w', 'up', 'space'], function(e) {
-    	if (e.preventDefault()) {
-    		e.preventDefault();
-    	} else {
-    		// internet explorer
-    		e.returnValue = false;
-    	}
-        player1.start_jumping();
-    });
-
-    // Bind keys for crouching
-    Mousetrap.bind(['s', 'down'], function(e) {
-    	if (e.preventDefault()) {
-    		e.preventDefault();
-    	} else {
-    		// Internet explorer
-    		e.returnValue = false;
-    	}
-        //player1.start_crouching();
-        player1.stop_moving();
-    });
-
     // Bind keys for moving left
     Mousetrap.bind(['a', 'left'], function() { 
-    	console.log('left');
 		player1.isMoving = true;
     	player1.isFacingLeft = true;
 		player1.isWalking = true;
         player1.start_walking();
     });
     Mousetrap.bind(['a', 'left'], function() {
-    	console.log('leftup');
-		player1.isMoving = false;
-		player1.slow_inertia();
+		if (player1.isFacingLeft) {
+			player1.slow_inertia();
+		}
     }, 'keyup');
 
     // Bind keys for moving right
     Mousetrap.bind(['d', 'right'], function() {
-    	console.log('right');
 		player1.isMoving = true;
     	player1.isFacingLeft = false;
 		player1.isWalking = true;
         player1.start_walking();
     });
     Mousetrap.bind(['d', 'right'], function() {
-    	console.log('rightup');
-		player1.isMoving = false;
-		player1.slow_inertia();
+		if (!player1.isFacingLeft) {
+			player1.slow_inertia();
+		}
     }, 'keyup');
+
+    // Bind keys for jumping
+    Mousetrap.bind(['w', 'up', 'space'], function(e) {
+    	// Remove default behavior of buttons (page scrolling)
+    	if (e.preventDefault()) {
+    		e.preventDefault();
+    	} else {
+    		e.returnValue = false; //IE
+    	}
+        player1.start_jumping();
+    });
+
+    // Bind keys for crouching
+    Mousetrap.bind(['s', 'down'], function(e) {
+    	// Remove default behavior of buttons (page scrolling)
+    	if (e.preventDefault()) {
+    		e.preventDefault();
+    	} else {
+    		e.returnValue = false; //IE
+    	}
+        //player1.start_crouching();
+        player1.stop_moving();
+    });
 
     // Bind keys for running
     Mousetrap.bind('r', function() { 
