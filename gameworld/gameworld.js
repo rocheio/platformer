@@ -8,8 +8,9 @@ function GameCanvas(width, height, groundLevel) {
 	this.canvasHeight = height || 600;
 
 	// Parental properties
-	this.npcList = new Array();
-	this.platformList = new Array();
+	this.npcList = [];
+	this.platformList = [];
+	this.platformAreas = [];
 
 	// Physics properties
 	this.groundLevel = groundLevel || 50;
@@ -25,12 +26,25 @@ function GameCanvas(width, height, groundLevel) {
 		thisCanvas.tick_gravity();
 	}, this.gravityRate);
 
-	/** Reduce each character's x height until it
-		reaches the ground. */
+	/** Reduce each character's y height until it
+		reaches the ground or a solid object. */
 	this.tick_gravity = function() {
+
+		// Reduce each character's y height if needed 
 		for (ii = 0; ii < this.npcList.length; ii++) {
-			if (this.npcList[ii].yloc > 0) {
-				this.npcList[ii].yloc -= this.gravityAmount;
+			thisNPC = this.npcList[ii];
+
+			// Reduce height until character reaches an object
+			if (thisNPC.is_above_platform(this.platformAreas)) {
+				if (thisNPC.yloc > thisNPC.currentMaxHeight) {
+					thisNPC.yloc -= this.gravityAmount;
+					thisNPC.isOnPlatform = false;
+				} else {
+					thisNPC.isOnPlatform = true;
+				}
+			} else if (thisNPC.is_above_ground_level()) {
+				thisNPC.yloc -= this.gravityAmount;
+				thisNPC.isOnPlatform = false;
 			}
 		}
 	}
@@ -71,6 +85,10 @@ function GameCanvas(width, height, groundLevel) {
 	this.add_platform = function(xStart, xEnd, yHeight) {
 		newPlatform = new GamePlatform(this, xStart, xEnd, yHeight);
 		this.platformList.push(newPlatform);
+		
+		this.platformAreas.push([newPlatform.xStart,
+								newPlatform.xEnd,
+								newPlatform.yHeight]);
 
 		return newPlatform;
 	}
@@ -178,26 +196,53 @@ function GamePlatform(gameCanvas, xStart, xEnd, yHeight) {
 function GameCharacter(gameCanvas, xloc, yloc) {
 	var thisChar = this;
 
-	// Character assets
+	// Character Asset Lists
 	this.characterImages = [];
 
-	// Character states
+	// Character States
 	this.isFacingLeft = false;
 	this.isMoving = false;
 	this.isWalking = false;
 	this.isRunning = false;
 	this.isJumping = false;
+	this.isOnPlatform = false;
+
+	/** Return true if the character is above ground level. */
+	this.is_above_ground_level = function() {
+		if (this.yloc > 0) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	/** Return true if the character is above a platform. */
+	this.is_above_platform = function(platformAreas) {
+		for (jj = 0; jj < platformAreas.length; jj++) {
+			platformArea = platformAreas[jj];
+
+			if (this.xloc > platformArea[0]
+				& this.xloc < platformArea[1]
+				& this.yloc >= platformArea[2]) {
+
+				this.currentMaxHeight = platformArea[2];
+				return true;
+			}
+		}
+		return false;
+	}
 
 	// Positional properties
 	this.gameCanvas = gameCanvas;
 	this.xloc = xloc || 100;
 	this.yloc = yloc || 0;
+	this.currentMaxHeight = 0;
 
 	// Movement properties
 	this.stepAmt = 12;
 	this.stepsPerSecond = 30;
-	this.timeBeforeMovementStop = 200;
-	this.jumpHeight = 150;
+	this.timeBeforeMovementStop = 100;
+	this.jumpHeight = 180;
 	this.runMultiplier = 2;
 
 	/** Breathing properties */
@@ -440,7 +485,8 @@ function GameCharacter(gameCanvas, xloc, yloc) {
 			this.isJumping = true;
 			this.yloc += this.jumpHeight;
 			this.jumpEndInterval = setInterval(function(){
-				if (thisChar.yloc <= 0) {
+				if (!thisChar.is_above_ground_level()
+					|| thisChar.isOnPlatform) {
 					thisChar.land_jump();
 				}
 			}, 50);
@@ -449,7 +495,6 @@ function GameCharacter(gameCanvas, xloc, yloc) {
 
 	/** Land after completing a jump. */
 	this.land_jump = function() {
-		thisChar.yloc = 0;
 		thisChar.isJumping = false;
 		clearInterval(thisChar.jumpEndInterval);
 		if (thisChar.isMoving === false) {
@@ -527,10 +572,12 @@ window.onload = function () {
 
 	// Add environment objects to the game world
 	gameWorld.add_platform(xStart=300, xEnd=600, yHeight=100);
+	gameWorld.add_platform(xStart=20, xEnd=250, yHeight=200);
+	//gameWorld.add_platform(xStart=300, xEnd=500, yHeight=300);
 
 	// Add one player and two NPCs to the world
 	player1 = gameWorld.add_npc(100);
-	npc1 = gameWorld.add_npc(400, 200);
+	npc1 = gameWorld.add_npc(500, 200);
 	npc2 = gameWorld.add_npc(650);
 
     // Bind keys for moving left
