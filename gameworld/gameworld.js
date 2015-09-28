@@ -36,15 +36,17 @@ function GameCanvas(width, height, groundLevel) {
 
 			// Reduce height until character reaches an object
 			if (thisNPC.is_above_platform(this.platformAreas)) {
-				if (thisNPC.yloc > thisNPC.currentMaxHeight) {
+				if (!thisNPC.is_on_platform()) {
 					thisNPC.yloc -= this.gravityAmount;
-					thisNPC.isOnPlatform = false;
-				} else {
-					thisNPC.isOnPlatform = true;
+					thisNPC.start_falling();
 				}
-			} else if (thisNPC.is_above_ground_level()) {
+			} else 
+
+			if (thisNPC.is_above_ground_level()
+				|| (thisNPC.is_above_platform(this.platformAreas)
+					&& !thisNPC.is_on_platform)) {
 				thisNPC.yloc -= this.gravityAmount;
-				thisNPC.isOnPlatform = false;
+				thisNPC.start_falling();
 			}
 		}
 	}
@@ -170,6 +172,15 @@ function GamePlatform(gameCanvas, xStart, xEnd, yHeight) {
 	this.xEnd = xEnd;
 	this.yHeight = yHeight;
 
+	/** Return true if the platform is reachable by a character. */
+	this.is_reachable = function() {
+		if (this.yloc <= this.currentMaxHeight) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+
 	/** Draw this platform on the canvas. */
 	this.draw_platform = function() {
 		// Get generic properties to gameWorld
@@ -205,7 +216,8 @@ function GameCharacter(gameCanvas, xloc, yloc) {
 	this.isWalking = false;
 	this.isRunning = false;
 	this.isJumping = false;
-	this.isOnPlatform = false;
+	this.isFalling = false;
+	this.isLoggingEnabled = false;
 
 	/** Return true if the character is above ground level. */
 	this.is_above_ground_level = function() {
@@ -216,20 +228,39 @@ function GameCharacter(gameCanvas, xloc, yloc) {
 		}
 	}
 
+	/** Return true if the character is directly ON a platform. */
+	this.is_on_platform = function() {
+		if (this.yloc === this.currentMaxHeight) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+
 	/** Return true if the character is above a platform. */
 	this.is_above_platform = function(platformAreas) {
+		abovePlatform = false;
+
+		// Check every platform in the game world
 		for (jj = 0; jj < platformAreas.length; jj++) {
 			platformArea = platformAreas[jj];
+			platformHeight = platformArea[2];
 
-			if (this.xloc > platformArea[0]
-				& this.xloc < platformArea[1]
-				& this.yloc >= platformArea[2]) {
-
-				this.currentMaxHeight = platformArea[2];
-				return true;
+			// Is character above the current platform?
+			if (this.yloc >= platformHeight
+				&& this.xloc > platformArea[0]
+				&& this.xloc < platformArea[1]) {
+				
+				if (platformHeight > this.currentMaxHeight) {
+					//&& platformHeight < (this.currentMaxHeight + this.jumpHeight)) {
+					this.currentMaxHeight = platformHeight;
+				}
+				
+				abovePlatform = true;
 			}
 		}
-		return false;
+
+		return abovePlatform;
 	}
 
 	// Positional properties
@@ -339,6 +370,9 @@ function GameCharacter(gameCanvas, xloc, yloc) {
 	 	// Set character y position relative to game world
 	 	yy = groundLevel - this.yloc;
 
+	 	// Determine if character is in air or not
+	 	isAirborne = (this.isJumping || this.isFalling);
+
 /*
 		// PUT LINES 250 - 292 INTO LOOPS
 
@@ -346,7 +380,7 @@ function GameCharacter(gameCanvas, xloc, yloc) {
  						characterImages[1],
  						characterImages[0]];
 
-		if (this.isJumping) {
+		if (isAirborne) {
 			imagesToLoad.push(characterImages[8]);
 			imagesToLoad.push(characterImages[4]);
 			imagesToLoad.push(characterImages[6]);
@@ -360,21 +394,21 @@ function GameCharacter(gameCanvas, xloc, yloc) {
 */
 
 		// Draw the character's shadow
-		if (this.isJumping) {
+		if (isAirborne) {
 			this.draw_ellipse(xx+40, groundLevel, 100-breathOffset, 4);
 		} else {
 			this.draw_ellipse(xx+40, groundLevel, 160-breathOffset, 6);
 		}
 
 		// Draw the character's back arm
-		if (this.isJumping) {
+		if (isAirborne) {
  			this.draw_image(characterImages[8], xx, yy, breathOffset);
 		} else {
  			this.draw_image(characterImages[7], xx, yy, breathOffset);
 		}
 		
 		// Draw the character's legs
-		if (this.isJumping) {
+		if (isAirborne) {
  			this.draw_image(characterImages[4], xx, yy, 0);
 		} else {
  			this.draw_image(characterImages[3], xx, yy, 0);
@@ -390,7 +424,7 @@ function GameCharacter(gameCanvas, xloc, yloc) {
  		this.draw_image(characterImages[0], xx, yy, breathOffset);
 		
 		// Draw the character's front arm
-		if (this.isJumping) {
+		if (isAirborne) {
  			this.draw_image(characterImages[6], xx, yy, breathOffset);
 		} else {
  			this.draw_image(characterImages[5], xx, yy, breathOffset);
@@ -481,12 +515,30 @@ function GameCharacter(gameCanvas, xloc, yloc) {
 
 	/** Make the character jump. */
 	this.start_jumping = function() {
-		if (!this.isJumping) {
+		if (!this.isJumping &&
+				!this.isFalling) {
 			this.isJumping = true;
+			this.currentMaxHeight = 0;
 			this.yloc += this.jumpHeight;
+
 			this.jumpEndInterval = setInterval(function(){
-				if (!thisChar.is_above_ground_level()
-					|| thisChar.isOnPlatform) {
+				if (thisChar.is_on_platform()
+					|| !thisChar.is_above_ground_level()) {
+					thisChar.land_jump();
+				}
+			}, 50);
+		}
+	}
+
+	/** Make the character fall. */
+	this.start_falling = function() {
+		if (!this.isFalling) {
+			this.isFalling = true;
+			this.currentMaxHeight = 0;
+
+			this.jumpEndInterval = setInterval(function(){
+				if (thisChar.is_on_platform()
+					|| !thisChar.is_above_ground_level()) {
 					thisChar.land_jump();
 				}
 			}, 50);
@@ -496,6 +548,7 @@ function GameCharacter(gameCanvas, xloc, yloc) {
 	/** Land after completing a jump. */
 	this.land_jump = function() {
 		thisChar.isJumping = false;
+		thisChar.isFalling = false;
 		clearInterval(thisChar.jumpEndInterval);
 		if (thisChar.isMoving === false) {
 			thisChar.slow_inertia();
@@ -573,7 +626,7 @@ window.onload = function () {
 	// Add environment objects to the game world
 	gameWorld.add_platform(xStart=300, xEnd=600, yHeight=100);
 	gameWorld.add_platform(xStart=20, xEnd=250, yHeight=200);
-	//gameWorld.add_platform(xStart=300, xEnd=500, yHeight=300);
+	gameWorld.add_platform(xStart=300, xEnd=500, yHeight=300);
 
 	// Add one player and two NPCs to the world
 	player1 = gameWorld.add_npc(100);
