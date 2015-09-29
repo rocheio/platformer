@@ -1,4 +1,5 @@
-/** Represents a gameCanvas (HTML canvas). */
+/** Represents an HTML canvas on which a game is
+	being played. */
 function GameCanvas(width, height, groundLevel) {
 	var thisCanvas = this;
 
@@ -7,13 +8,33 @@ function GameCanvas(width, height, groundLevel) {
 	this.canvasWidth = width || 800;
 	this.canvasHeight = height || 600;
 
+	// Frames per second properties
+	this.canvasFPS = 30;
+	this.currentFPS = 0;
+	this.displayFPS = false;
+
+	/** Creates the working game canvas for any browser. */
+	this.prepare_canvas = function(canvasDiv) {
+		// Create the canvas in a way that works with IE.
+		this.canvas.setAttribute('width', this.canvasWidth);
+		this.canvas.setAttribute('height', this.canvasHeight);
+		this.canvas.setAttribute('id', 'canvas');
+		canvasDiv.appendChild(this.canvas);
+		
+		if (typeof G_vmlCanvasManager != 'undefined') {
+			this.canvas = G_vmlCanvasManager.initElement(this.canvas);
+		}
+
+		this.context = document.getElementById('canvas').getContext("2d");
+	}
+
 	// Parental properties
 	this.characterList = [];
 	this.platformList = [];
 	this.platformAreas = [];
 
 	// Physics properties
-	this.groundLevel = groundLevel || 50;
+	this.groundLevel = groundLevel || 0;
 	this.images = {};
 	this.numResourcesLoaded = 0;
 	this.startDrawingLimit = 9; //images loaded
@@ -44,27 +65,7 @@ function GameCanvas(width, height, groundLevel) {
 		}
 	}
 
-	// Frames per second properties
-	this.canvasFPS = 30;
-	this.currentFPS = 0;
-	this.displayFPS = false;
-
-	/** Creates the working game canvas for any browser. */
-	this.prepare_canvas = function(canvasDiv) {
-		// Create the canvas in a way that works with IE.
-		this.canvas.setAttribute('width', this.canvasWidth);
-		this.canvas.setAttribute('height', this.canvasHeight);
-		this.canvas.setAttribute('id', 'canvas');
-		canvasDiv.appendChild(this.canvas);
-		
-		if (typeof G_vmlCanvasManager != 'undefined') {
-			this.canvas = G_vmlCanvasManager.initElement(this.canvas);
-		}
-
-		this.context = document.getElementById('canvas').getContext("2d");
-	}
-
-	/** Add a new character to the gameCanvas. */
+	/** Add a new character to this gameCanvas. */
 	this.add_npc = function(xPosition, yPosition) {
 		var xPosition = xPosition || 0;
 		var yPosition = yPosition || 0;
@@ -191,10 +192,16 @@ function GamePlatform(gameCanvas, xStart, xEnd, yHeight) {
 function GameCharacter(gameCanvas, xPosition, yPosition) {
 	var thisChar = this;
 
+	// Positional properties
+	this.gameCanvas = gameCanvas;
+	this.xPosition = xPosition || 100;
+	this.yPosition = yPosition || 0;
+	this.yFloor = 0;
+
 	// Character Asset Lists
 	this.characterImages = [];
 
-	// Defaults for now
+	// Default images for now
 	this.characterImages = [
 		{
 			'imageID': 'hair',
@@ -297,12 +304,6 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 		this.yFloor = newYFloor;
 	}
 
-	// Positional properties
-	this.gameCanvas = gameCanvas;
-	this.xPosition = xPosition || 100;
-	this.yPosition = yPosition || 0;
-	this.yFloor = 0;
-
 	// Movement properties
 	this.stepAmt = 12;
 	this.stepsPerSecond = 30;
@@ -379,10 +380,14 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 		*/
 
 		// Draw the character's shadow
-		if (isAirborne) {
-			this.draw_ellipse(xx+40, groundLevel, 100-breathOffset, 4);
-		} else {
-			this.draw_ellipse(xx+40, groundLevel, 160-breathOffset, 6);
+		var shadowHeight = groundLevel - this.yFloor;
+		var shadowWidth = 160 - (this.yPosition - this.yFloor) * 0.8;
+		if (shadowWidth > 0) {
+			if (isAirborne) {
+				this.draw_ellipse(xx+40, shadowHeight, shadowWidth-breathOffset, 4);
+			} else {
+				this.draw_ellipse(xx+40, shadowHeight, shadowWidth-breathOffset, 6);
+			}
 		}
 
 		// Draw the character's back arm
@@ -612,6 +617,7 @@ window.onload = function () {
 	gameWorld.add_fps();
 
 	// Add environment objects to the game world
+	gameWorld.add_platform(xStart=0, xEnd=800, yHeight=0);
 	gameWorld.add_platform(xStart=300, xEnd=600, yHeight=100);
 	gameWorld.add_platform(xStart=20, xEnd=250, yHeight=200);
 	gameWorld.add_platform(xStart=350, xEnd=500, yHeight=300);
