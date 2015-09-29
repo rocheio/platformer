@@ -8,7 +8,7 @@ function GameCanvas(width, height, groundLevel) {
 	this.canvasHeight = height || 600;
 
 	// Parental properties
-	this.npcList = [];
+	this.characterList = [];
 	this.platformList = [];
 	this.platformAreas = [];
 
@@ -19,40 +19,33 @@ function GameCanvas(width, height, groundLevel) {
 	this.startDrawingLimit = 9; //images loaded
 	this.numFramesDrawn = 0;
 
-	// Gravity
+	// Gravity properties
 	this.gravityRate = 25;
 	this.gravityAmount = 4;
 	this.gravityInterval = setInterval(function(){
 		thisCanvas.tick_gravity();
 	}, this.gravityRate);
 
-	/** Reduce each character's y height until it
+	/** Reduce each character's yPosition until it
 		reaches the ground or a solid object. */
 	this.tick_gravity = function() {
+		for (ii = 0; ii < this.characterList.length; ii++) {
+			thisChar = this.characterList[ii];
 
-		// Reduce each character's y height if needed 
-		for (ii = 0; ii < this.npcList.length; ii++) {
-			thisNPC = this.npcList[ii];
+			// Find the highest object beneath this character
+			thisChar.find_yfloor(this.platformAreas);
 
-			// Reduce height until character reaches an object
-			if (thisNPC.is_above_platform(this.platformAreas)) {
-				if (!thisNPC.is_on_platform()) {
-					thisNPC.yloc -= this.gravityAmount;
-					thisNPC.start_falling();
-				}
-			} else 
-
-			if (thisNPC.is_above_ground_level()
-				|| (thisNPC.is_above_platform(this.platformAreas)
-					&& !thisNPC.is_on_platform)) {
-				thisNPC.yloc -= this.gravityAmount;
-				thisNPC.start_falling();
+			// Do nothing if character is currently on a platform
+			if (thisChar.is_above_ground_level()
+					&& !thisChar.is_at_yfloor()) {
+				thisChar.yPosition -= this.gravityAmount;
+				thisChar.start_falling();
 			}
 		}
 	}
 
 	// Frames per second properties
-	this.fps = 30;
+	this.canvasFPS = 30;
 	this.currentFPS = 0;
 	this.displayFPS = false;
 
@@ -72,13 +65,13 @@ function GameCanvas(width, height, groundLevel) {
 	}
 
 	/** Add a new character to the gameCanvas. */
-	this.add_npc = function(xloc, yloc) {
-		var xloc = xloc || 0;
-		var yloc = yloc || 0;
+	this.add_npc = function(xPosition, yPosition) {
+		var xPosition = xPosition || 0;
+		var yPosition = yPosition || 0;
 
-		newNPC = new GameCharacter(this, xloc, yloc);
+		newNPC = new GameCharacter(this, xPosition, yPosition);
 		newNPC.load_assets();
-		this.npcList.push(newNPC);
+		this.characterList.push(newNPC);
 
 		return newNPC;
 	}
@@ -115,7 +108,7 @@ function GameCanvas(width, height, groundLevel) {
 			this.canvasInterval = setInterval(function(){
 				thisCanvas.redraw_canvas();
 				thisCanvas.numFramesDrawn += 1;
-			}, 1000/this.fps);
+			}, 1000/this.canvasFPS);
 		}
 	}
 
@@ -127,14 +120,14 @@ function GameCanvas(width, height, groundLevel) {
 		// Create fps monitor in bottom left of screen
 		this.context.font = "bold 12px sans-serif";
 		if (this.displayFPS) {
-			fpsText = ("fps: " + this.currentFPS + "/" + this.fps
+			fpsText = ("fps: " + this.currentFPS + "/" + this.canvasFPS
 						+ " (" + this.numFramesDrawn + ")");
 			this.context.fillText(fpsText, 5, this.canvasHeight-5);
 		}
 
 		// Draw each character bound to this world
-		for (ii = 0; ii < this.npcList.length; ii++) {
-			characterToDraw = this.npcList[ii];
+		for (ii = 0; ii < this.characterList.length; ii++) {
+			characterToDraw = this.characterList[ii];
 			characterToDraw.draw_character();
 		}
 
@@ -172,15 +165,6 @@ function GamePlatform(gameCanvas, xStart, xEnd, yHeight) {
 	this.xEnd = xEnd;
 	this.yHeight = yHeight;
 
-	/** Return true if the platform is reachable by a character. */
-	this.is_reachable = function() {
-		if (this.yloc <= this.currentMaxHeight) {
-			return true;
-		} else {
-			return false;
-		}
-	}
-
 	/** Draw this platform on the canvas. */
 	this.draw_platform = function() {
 		// Get generic properties to gameWorld
@@ -204,11 +188,61 @@ function GamePlatform(gameCanvas, xStart, xEnd, yHeight) {
 
 
 /** Represents an in-game character. */
-function GameCharacter(gameCanvas, xloc, yloc) {
+function GameCharacter(gameCanvas, xPosition, yPosition) {
 	var thisChar = this;
 
 	// Character Asset Lists
 	this.characterImages = [];
+
+	// Defaults for now
+	this.characterImages = [
+		{
+			'imageID': 'hair',
+			'location': 'hair.png',
+			'yOffset': 171,
+			'xOffset': -37,
+		}, {
+			'imageID': 'head',
+			'location': 'head.png',
+			'yOffset': 160,
+			'xOffset': -10,
+		}, {
+			'imageID': 'torso',
+			'location': 'torso.png',
+			'yOffset': 80,
+			'xOffset': 0,
+		}, {
+			'imageID': 'legs',
+			'location': 'legs.png',
+			'yOffset': 30,
+			'xOffset': 0,
+		}, {
+			'imageID': 'legs-jump',
+			'location': 'legs-jump.png',
+			'yOffset': 36,
+			'xOffset': 0,
+		}, {
+			'imageID': 'front-arm',
+			'location': 'front-arm.png',
+			'yOffset': 80,
+			'xOffset': -15,
+		}, {
+			'imageID': 'front-arm-jump',
+			'location': 'front-arm-jump.png',
+			'yOffset': 80,
+			'xOffset': -40,
+		}, {
+			'imageID': 'back-arm',
+			'location': 'back-arm.png',
+			'yOffset': 80,
+			'xOffset': 40,
+		}, {
+			'imageID': 'back-arm-jump',
+			'location': 'back-arm-jump.png',
+			'yOffset': 80,
+			'xOffset': 40,
+		}
+	];
 
 	// Character States
 	this.isFacingLeft = false;
@@ -219,55 +253,55 @@ function GameCharacter(gameCanvas, xloc, yloc) {
 	this.isFalling = false;
 	this.isLoggingEnabled = false;
 
-	/** Return true if the character is above ground level. */
+	/** Return true if this character is above ground level. */
 	this.is_above_ground_level = function() {
-		if (this.yloc > 0) {
+		if (this.yPosition > 0) {
 			return true;
 		} else {
 			return false;
 		}
 	}
 
-	/** Return true if the character is directly ON a platform. */
-	this.is_on_platform = function() {
-		if (this.yloc === this.currentMaxHeight) {
+	/** Return true if this character is directly ON a platform. */
+	this.is_at_yfloor = function() {
+		if (this.yPosition === this.yFloor) {
 			return true;
 		} else {
 			return false;
 		}
 	}
 
-	/** Return true if the character is above a platform. */
-	this.is_above_platform = function(platformAreas) {
-		abovePlatform = false;
+	/** Find the highest object below the player and set its
+		floor so that it does not fall below it. */
+	this.find_yfloor = function(platformAreas) {
+		var newYFloor = 0;
 
-		// Check every platform in the game world
+		// Check every platform in the character's game world
 		for (jj = 0; jj < platformAreas.length; jj++) {
 			platformArea = platformAreas[jj];
-			platformHeight = platformArea[2];
+			platformStartX = platformArea[0];
+			platformEndX = platformArea[1];
+			platformY = platformArea[2];
 
-			// Is character above the current platform?
-			if (this.yloc >= platformHeight
-				&& this.xloc > platformArea[0]
-				&& this.xloc < platformArea[1]) {
-				
-				if (platformHeight > this.currentMaxHeight) {
-					//&& platformHeight < (this.currentMaxHeight + this.jumpHeight)) {
-					this.currentMaxHeight = platformHeight;
-				}
-				
-				abovePlatform = true;
+			// Is this character above the current platform,
+			// within its horizontal boundaries, and is the platform
+			// above all other platforms the character above?
+			if (this.yPosition >= platformY
+					&& this.xPosition >= platformStartX
+					&& this.xPosition <= platformEndX
+					&& platformY > newYFloor) {
+				newYFloor = platformY;
 			}
 		}
 
-		return abovePlatform;
+		this.yFloor = newYFloor;
 	}
 
 	// Positional properties
 	this.gameCanvas = gameCanvas;
-	this.xloc = xloc || 100;
-	this.yloc = yloc || 0;
-	this.currentMaxHeight = 0;
+	this.xPosition = xPosition || 100;
+	this.yPosition = yPosition || 0;
+	this.yFloor = 0;
 
 	// Movement properties
 	this.stepAmt = 12;
@@ -279,11 +313,11 @@ function GameCharacter(gameCanvas, xloc, yloc) {
 	/** Breathing properties */
 	this.breathDirection = 1;
 	this.breathInc = 0.1;
-	this.breathAmt = 0;
+	this.currentBreath = 0;
 	this.breathMax = 2;
 	this.breathInterval = setInterval(function(){
 		thisChar.update_breath();
-	}, 1000/this.gameCanvas.fps);
+	}, 1000/this.gameCanvas.canvasFPS);
 
 	/** Blinking properties */
 	this.maxEyeHeight = 14;
@@ -298,55 +332,6 @@ function GameCharacter(gameCanvas, xloc, yloc) {
 	/** Load the images needed for this character to 
 		the parent gameCanvas. */
 	this.load_assets = function() {
-		this.characterImages = [
-			{
-				'imageID': 'hair',
-				'location': 'hair.png',
-				'yOffset': 171,
-				'xOffset': -37,
-			}, {
-				'imageID': 'head',
-				'location': 'head.png',
-				'yOffset': 160,
-				'xOffset': -10,
-			}, {
-				'imageID': 'torso',
-				'location': 'torso.png',
-				'yOffset': 80,
-				'xOffset': 0,
-			}, {
-				'imageID': 'legs',
-				'location': 'legs.png',
-				'yOffset': 30,
-				'xOffset': 0,
-			}, {
-				'imageID': 'legs-jump',
-				'location': 'legs-jump.png',
-				'yOffset': 36,
-				'xOffset': 0,
-			}, {
-				'imageID': 'front-arm',
-				'location': 'front-arm.png',
-				'yOffset': 80,
-				'xOffset': -15,
-			}, {
-				'imageID': 'front-arm-jump',
-				'location': 'front-arm-jump.png',
-				'yOffset': 80,
-				'xOffset': -40,
-			}, {
-				'imageID': 'back-arm',
-				'location': 'back-arm.png',
-				'yOffset': 80,
-				'xOffset': 40,
-			}, {
-				'imageID': 'back-arm-jump',
-				'location': 'back-arm-jump.png',
-				'yOffset': 80,
-				'xOffset': 40,
-			}
-		];
-
 		for (ii=0; ii<this.characterImages.length; ii++) {
 			imageLocation = this.characterImages[ii].imageID;
 			gameCanvas.load_image(imageLocation);
@@ -360,20 +345,20 @@ function GameCharacter(gameCanvas, xloc, yloc) {
 			canvasHeight = gameCanvas.canvasHeight,
 		 	groundLevel = canvasHeight - gameCanvas.groundLevel,
 		 	characterImages = this.characterImages,
-		 	xx = this.xloc,
-		 	breathOffset = this.breathAmt;
+		 	xx = this.xPosition,
+		 	breathOffset = this.currentBreath;
 
 	 	// Draw the character in a left position if facing left
  		//this.gameCanvas.context.translate(this.gameCanvas.width, 0);
 	 	//this.gameCanvas.context.scale(-1, 1);
 
 	 	// Set character y position relative to game world
-	 	yy = groundLevel - this.yloc;
+	 	yy = groundLevel - this.yPosition;
 
 	 	// Determine if character is in air or not
 	 	isAirborne = (this.isJumping || this.isFalling);
 
-/*
+		/*
 		// PUT LINES 250 - 292 INTO LOOPS
 
 	 	imagesToLoad = [characterImages[2],
@@ -391,7 +376,7 @@ function GameCharacter(gameCanvas, xloc, yloc) {
 		}
 
 		this.draw_all_images(imagesToLoad, xx, groundLevel, breathOffset);
-*/
+		*/
 
 		// Draw the character's shadow
 		if (isAirborne) {
@@ -480,14 +465,14 @@ function GameCharacter(gameCanvas, xloc, yloc) {
 	this.update_breath = function() {
 		if (this.breathDirection === 1) {
 			// Breath in (character rises)
-			this.breathAmt -= this.breathInc;
-			if (this.breathAmt < -this.breathMax) {
+			this.currentBreath -= this.breathInc;
+			if (this.currentBreath < -this.breathMax) {
 				this.breathDirection = -1;
 			}
 		} else { 
 			// Breath out (character falls)
-			this.breathAmt += this.breathInc;
-			if(this.breathAmt > this.breathMax) {
+			this.currentBreath += this.breathInc;
+			if(this.currentBreath > this.breathMax) {
 				this.breathDirection = 1;
 			}
 		}
@@ -518,13 +503,13 @@ function GameCharacter(gameCanvas, xloc, yloc) {
 		if (!this.isJumping &&
 				!this.isFalling) {
 			this.isJumping = true;
-			this.currentMaxHeight = 0;
-			this.yloc += this.jumpHeight;
+			this.yFloor = 0;
+			this.yPosition += this.jumpHeight;
 
-			this.jumpEndInterval = setInterval(function(){
-				if (thisChar.is_on_platform()
+			this.hangtimeEndInterval = setInterval(function(){
+				if (thisChar.is_at_yfloor()
 					|| !thisChar.is_above_ground_level()) {
-					thisChar.land_jump();
+					thisChar.end_hangtime();
 				}
 			}, 50);
 		}
@@ -534,22 +519,23 @@ function GameCharacter(gameCanvas, xloc, yloc) {
 	this.start_falling = function() {
 		if (!this.isFalling) {
 			this.isFalling = true;
-			this.currentMaxHeight = 0;
+			this.yFloor = 0;
 
-			this.jumpEndInterval = setInterval(function(){
-				if (thisChar.is_on_platform()
+			this.hangtimeEndInterval = setInterval(function(){
+				if (thisChar.is_at_yfloor()
 					|| !thisChar.is_above_ground_level()) {
-					thisChar.land_jump();
+					thisChar.end_hangtime();
 				}
 			}, 50);
 		}
 	}
 
-	/** Land after completing a jump. */
-	this.land_jump = function() {
+	/** Land after hanging in the air from
+		falling or jumping. */
+	this.end_hangtime = function() {
 		thisChar.isJumping = false;
 		thisChar.isFalling = false;
-		clearInterval(thisChar.jumpEndInterval);
+		clearInterval(thisChar.hangtimeEndInterval);
 		if (thisChar.isMoving === false) {
 			thisChar.slow_inertia();
 		}
@@ -580,7 +566,7 @@ function GameCharacter(gameCanvas, xloc, yloc) {
 			stepAmount *= this.runMultiplier;
 		}
 
-		this.xloc += stepAmount;
+		this.xPosition += stepAmount;
 	}
 
 	/** Make the character start running. */
@@ -616,6 +602,8 @@ function GameCharacter(gameCanvas, xloc, yloc) {
 	}
 }
 
+
+
 /** Window onload actions. */
 window.onload = function () {
 	// Initialize the game world
@@ -626,7 +614,8 @@ window.onload = function () {
 	// Add environment objects to the game world
 	gameWorld.add_platform(xStart=300, xEnd=600, yHeight=100);
 	gameWorld.add_platform(xStart=20, xEnd=250, yHeight=200);
-	gameWorld.add_platform(xStart=300, xEnd=500, yHeight=300);
+	gameWorld.add_platform(xStart=350, xEnd=500, yHeight=300);
+	gameWorld.add_platform(xStart=500, xEnd=700, yHeight=420);
 
 	// Add one player and two NPCs to the world
 	player1 = gameWorld.add_npc(100);
