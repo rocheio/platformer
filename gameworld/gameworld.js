@@ -31,6 +31,7 @@ function GameCanvas(width, height, groundLevel) {
 	// Parental properties
 	this.characterList = [];
 	this.platformList = [];
+	this.wallList = [];
 	this.platformAreas = [];
 
 	// Physics properties
@@ -89,6 +90,14 @@ function GameCanvas(width, height, groundLevel) {
 		return newPlatform;
 	}
 
+	/** Add a wall object to the gameCanvas. */
+	this.add_wall = function(xPosition, yStart, yHeight) {
+		newWall = new GameWall(this, xPosition, yStart, yHeight);
+		this.wallList.push(newWall);
+
+		return newWall;
+	}
+
 	/** Load an image to HTML from the /images/ folder. 
 	Begin the animations for that image. */
 	this.load_image = function(name) {
@@ -137,6 +146,12 @@ function GameCanvas(width, height, groundLevel) {
 			platformToDraw = this.platformList[ii];
 			platformToDraw.draw_platform();
 		}
+
+		// Draw each wall bound to this world
+		for (ii = 0; ii < this.wallList.length; ii++) {
+			wallToDraw = this.wallList[ii];
+			wallToDraw.draw_wall();
+		}
 	}
 	
 	/** Update the fps for this canvas. */
@@ -181,6 +196,33 @@ function GamePlatform(gameCanvas, xStart, xEnd, yHeight) {
 		context.beginPath();
 		context.moveTo(this.xStart, platformHeight);
 		context.lineTo(this.xEnd, platformHeight);
+		context.stroke();
+		context.closePath();
+	}
+}
+
+
+
+/** Represents an in-game wall. */
+function GameWall(gameCanvas, xPosition, yStart, yHeight) {
+	// Positional properties
+	this.gameCanvas = gameCanvas;
+	this.xPosition = xPosition;
+	this.yStart = yStart;
+	this.yHeight = yHeight;
+
+	/** Draw this wall on the canvas. */
+	this.draw_wall = function() {
+		// Get generic properties to gameWorld
+		var yStart = this.gameCanvas.yheight -this.gameCanvas.groundLevel,
+			xEnd = this.xStart + this.xWidth,
+			yEnd = this.yStart + this.yHeight;
+
+		// Draw the platform on the canvas
+		context = gameCanvas.context;
+		context.beginPath();
+		context.moveTo(this.xPosition, yStart);
+		context.lineTo(this.xPosition, yEnd);
 		context.stroke();
 		context.closePath();
 	}
@@ -622,6 +664,7 @@ window.onload = function () {
 	gameWorld.add_platform(xStart=20, xEnd=250, yHeight=200);
 	gameWorld.add_platform(xStart=350, xEnd=500, yHeight=300);
 	gameWorld.add_platform(xStart=500, xEnd=700, yHeight=420);
+	gameWorld.add_wall(xPosition=300, yStart=0, yHeight=100);
 
 	// Add one player and two NPCs to the world
 	player1 = gameWorld.add_npc(100);
