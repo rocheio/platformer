@@ -392,8 +392,10 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 		 	breathOffset = this.currentBreath;
 
 	 	// Draw the character in a left position if facing left
- 		//this.gameCanvas.context.translate(this.gameCanvas.width, 0);
-	 	//this.gameCanvas.context.scale(-1, 1);
+	 	if (this.isFacingLeft) {
+	 		gameCanvas.context.scale(-1, 1);
+	 		xx *= -1;
+ 		}
 
 	 	// Set character y position relative to game world
 	 	yy = groundLevel - this.yPosition;
@@ -466,6 +468,11 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 	 	eyeHeight = yy-103-breathOffset;
 		this.draw_ellipse(xx+46, eyeHeight, 8, this.curEyeHeight);
 		this.draw_ellipse(xx+58, eyeHeight, 8, this.curEyeHeight);
+
+	 	// Flip the canvas back around after drawing
+	 	if (this.isFacingLeft) {
+	 		gameCanvas.context.scale(-1, 1);
+ 		}
 	}
 
 	/** Draw all images passed based on the character's current state. */
