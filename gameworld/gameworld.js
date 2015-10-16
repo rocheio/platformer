@@ -19,6 +19,7 @@ function GameCanvas(width, height, groundLevel) {
 		this.canvas.setAttribute('width', this.canvasWidth);
 		this.canvas.setAttribute('height', this.canvasHeight);
 		this.canvas.setAttribute('id', 'canvas');
+		this.canvas.setAttribute('class', 'canvas');
 		canvasDiv.appendChild(this.canvas);
 		
 		if (typeof G_vmlCanvasManager != 'undefined') {
