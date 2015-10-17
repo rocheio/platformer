@@ -34,6 +34,7 @@ function GameCanvas(width, height, groundLevel) {
 	this.platformList = [];
 	this.wallList = [];
 	this.platformAreas = [];
+	this.wallAreas = [];
 
 	// Physics properties
 	this.groundLevel = groundLevel || 0;
@@ -83,18 +84,20 @@ function GameCanvas(width, height, groundLevel) {
 	this.add_platform = function(xStart, xEnd, yHeight) {
 		newPlatform = new GamePlatform(this, xStart, xEnd, yHeight);
 		this.platformList.push(newPlatform);
-		
 		this.platformAreas.push([newPlatform.xStart,
-								newPlatform.xEnd,
-								newPlatform.yHeight]);
+								 newPlatform.xEnd,
+								 newPlatform.yHeight]);
 
 		return newPlatform;
 	}
 
 	/** Add a wall object to the gameCanvas. */
-	this.add_wall = function(xPosition, yStart, yHeight) {
-		newWall = new GameWall(this, xPosition, yStart, yHeight);
+	this.add_wall = function(xPosition, yBottom, yHeight) {
+		newWall = new GameWall(this, xPosition, yBottom, yHeight);
 		this.wallList.push(newWall);
+		this.wallAreas.push([newWall.xPosition,
+							 newWall.yBottom,
+							 newWall.yHeight]);
 
 		return newWall;
 	}
@@ -205,25 +208,26 @@ function GamePlatform(gameCanvas, xStart, xEnd, yHeight) {
 
 
 /** Represents an in-game wall. */
-function GameWall(gameCanvas, xPosition, yStart, yHeight) {
+function GameWall(gameCanvas, xPosition, yBottom, yHeight) {
 	// Positional properties
 	this.gameCanvas = gameCanvas;
 	this.xPosition = xPosition;
-	this.yStart = yStart;
+	this.yBottom = yBottom;
 	this.yHeight = yHeight;
 
 	/** Draw this wall on the canvas. */
 	this.draw_wall = function() {
 		// Get generic properties to gameWorld
-		var yStart = this.gameCanvas.yheight -this.gameCanvas.groundLevel,
-			xEnd = this.xStart + this.xWidth,
-			yEnd = this.yStart + this.yHeight;
+		var gameCanvas = this.gameCanvas,
+			groundLevel = gameCanvas.canvasHeight - gameCanvas.groundLevel,
+			yBottom = groundLevel + this.yBottom,
+			yTop = groundLevel + this.yBottom - this.yHeight;
 
-		// Draw the platform on the canvas
+		// Draw the wall on the canvas
 		context = gameCanvas.context;
 		context.beginPath();
-		context.moveTo(this.xPosition, yStart);
-		context.lineTo(this.xPosition, yEnd);
+		context.moveTo(this.xPosition, yBottom);
+		context.lineTo(this.xPosition, yTop);
 		context.stroke();
 		context.closePath();
 	}
@@ -240,6 +244,43 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 	this.xPosition = xPosition || 100;
 	this.yPosition = yPosition || 0;
 	this.yFloor = 0;
+
+	// Collision properties
+	this.xCollisionRadius = 110;
+	this.yCollisionHeight = 150;
+
+	/** Return true if this character is colliding with a wall. */
+	this.is_colliding = function() {
+		// Recalculate characters collision box based on direction
+		if (this.isFacingLeft) {
+			xCollisionLeft = this.xPosition - this.xCollisionRadius;
+			xCollisionRight = this.xPosition;
+		} else {
+			xCollisionLeft = this.xPosition;
+			xCollisionRight = this.xPosition + this.xCollisionRadius;
+		}
+
+		// Check every wall in the character's game world
+		wallAreas = this.gameCanvas.wallAreas;
+		for (jj = 0; jj < wallAreas.length; jj++) {
+			wallArea = wallAreas[jj];
+			wallXPosition = wallArea[0];
+			wallBottomY = wallArea[1];
+			wallTopY = wallArea[1] + wallArea[2];
+
+			// Is this wall within the characters collision box?
+			// and is the character vertically within the walls
+			// top and bottom vertical position
+			if (xCollisionLeft <= wallXPosition
+					&& xCollisionRight >= wallXPosition
+					&& this.yPosition >= wallBottomY
+					&& this.yPosition < wallTopY) {
+				return true;
+			}
+		}
+
+		return false;
+	}
 
 	// Character Asset Lists
 	this.characterImages = [];
@@ -598,14 +639,19 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 
 	/** Make the character walk. */
 	this.start_walking = function() {
-    	clearTimeout(this.stopMovingTimeout);
-		this.step_forward();
+		if (!this.is_colliding()) {
+			//
+	    	clearTimeout(this.stopMovingTimeout);
+			this.step_forward();
 
-		if (this.isWalking) {
-			clearInterval(this.stepInterval);
-			this.stepInterval = setInterval(function(){
-				thisChar.step_forward();
-			}, 1000/this.stepsPerSecond);
+			if (this.isWalking) {
+				clearInterval(this.stepInterval);
+				this.stepInterval = setInterval(function(){
+					if (!thisChar.is_colliding()) {
+						thisChar.step_forward();
+					}
+				}, 1000/this.stepsPerSecond);
+			}
 		}
 	}
 
@@ -666,13 +712,18 @@ window.onload = function () {
 	gameWorld.prepare_canvas(document.getElementById("canvas-div"));
 	gameWorld.add_fps();
 
-	// Add environment objects to the game world
+	// Add platform objects to the game world
 	gameWorld.add_platform(xStart=0, xEnd=800, yHeight=0);
 	gameWorld.add_platform(xStart=300, xEnd=600, yHeight=100);
 	gameWorld.add_platform(xStart=20, xEnd=250, yHeight=200);
 	gameWorld.add_platform(xStart=350, xEnd=500, yHeight=300);
-	gameWorld.add_platform(xStart=500, xEnd=700, yHeight=420);
-	gameWorld.add_wall(xPosition=300, yStart=0, yHeight=100);
+	gameWorld.add_platform(xStart=500, xEnd=650, yHeight=420);
+
+	// Add wall objects to the game world
+	gameWorld.add_wall(xPosition=0, yBottom=0, yHeight=1000);
+	gameWorld.add_wall(xPosition=300, yBottom=0, yHeight=100);
+	gameWorld.add_wall(xPosition=600, yBottom=0, yHeight=100);
+	gameWorld.add_wall(xPosition=800, yBottom=0, yHeight=1000);
 
 	// Add one player and two NPCs to the world
 	player1 = gameWorld.add_npc(100);
