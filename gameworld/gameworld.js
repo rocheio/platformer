@@ -246,8 +246,8 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 	this.yFloor = 0;
 
 	// Collision properties
-	this.xCollisionRadius = 110;
-	this.yCollisionHeight = 150;
+	this.xCollisionRadius = 70;
+	this.yCollisionHeight = 120;
 
 	/** Return true if this character is colliding with a wall. */
 	this.is_colliding = function() {
@@ -288,50 +288,50 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 	// Default images for now
 	this.characterImages = [
 		{
-			'imageID': 'hair',
-			'location': 'hair.png',
-			'yOffset': 171,
-			'xOffset': -37,
+			'imageID': 'soldier-helmet',
+			'location': 'soldier-helmet.png',
+			'xOffset': -3,
+			'yOffset': 122,
 		}, {
 			'imageID': 'head',
 			'location': 'head.png',
-			'yOffset': 160,
-			'xOffset': -10,
+			'xOffset': 3,
+			'yOffset': 105,
 		}, {
 			'imageID': 'torso',
 			'location': 'torso.png',
-			'yOffset': 80,
 			'xOffset': 0,
+			'yOffset': 80,
 		}, {
 			'imageID': 'legs',
 			'location': 'legs.png',
-			'yOffset': 30,
 			'xOffset': 0,
+			'yOffset': 40,
 		}, {
 			'imageID': 'legs-jump',
 			'location': 'legs-jump.png',
-			'yOffset': 36,
 			'xOffset': 0,
+			'yOffset': 40,
 		}, {
 			'imageID': 'front-arm',
 			'location': 'front-arm.png',
-			'yOffset': 80,
-			'xOffset': -15,
+			'xOffset': -5,
+			'yOffset': 70,
 		}, {
 			'imageID': 'front-arm-jump',
 			'location': 'front-arm-jump.png',
-			'yOffset': 80,
-			'xOffset': -40,
+			'xOffset': -25,
+			'yOffset': 75,
 		}, {
 			'imageID': 'back-arm',
 			'location': 'back-arm.png',
-			'yOffset': 80,
-			'xOffset': 40,
+			'xOffset': 30,
+			'yOffset': 70,
 		}, {
 			'imageID': 'back-arm-jump',
 			'location': 'back-arm-jump.png',
-			'yOffset': 80,
 			'xOffset': 40,
+			'yOffset': 75,
 		}
 	];
 
@@ -405,7 +405,7 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 	}, 1000/this.gameCanvas.canvasFPS);
 
 	/** Blinking properties */
-	this.maxEyeHeight = 14;
+	this.maxEyeHeight = 10;
 	this.curEyeHeight = this.maxEyeHeight;
 	this.eyeOpenTime = 0;
 	this.timeBtwBlinks = 4000;
@@ -467,12 +467,16 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 
 		// Draw the character's shadow
 		var shadowHeight = groundLevel - this.yFloor;
-		var shadowWidth = 160 - (this.yPosition - this.yFloor) * 0.8;
+		var shadowWidth = 100 - (this.yPosition - this.yFloor) * 0.8;
+		var shadowOffset = xx + 25;
+
 		if (shadowWidth > 0) {
 			if (isAirborne) {
-				this.draw_ellipse(xx+40, shadowHeight, shadowWidth-breathOffset, 4);
+				this.draw_ellipse(shadowOffset, shadowHeight, 
+								  shadowWidth-breathOffset, 4);
 			} else {
-				this.draw_ellipse(xx+40, shadowHeight, shadowWidth-breathOffset, 6);
+				this.draw_ellipse(shadowOffset, shadowHeight, 
+					  			  shadowWidth-breathOffset, 6);
 			}
 		}
 
@@ -496,7 +500,7 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
  		// Draw the character's head
  		this.draw_image(characterImages[1], xx, yy, breathOffset);
 
- 		// Draw the character's hair
+ 		// Draw the character's hat
  		this.draw_image(characterImages[0], xx, yy, breathOffset);
 		
 		// Draw the character's front arm
@@ -507,9 +511,9 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 		}
 
 		// Draw the character's eyes
-	 	eyeHeight = yy-103-breathOffset;
-		this.draw_ellipse(xx+46, eyeHeight, 8, this.curEyeHeight);
-		this.draw_ellipse(xx+58, eyeHeight, 8, this.curEyeHeight);
+	 	eyeHeight = yy-90-breathOffset;
+		this.draw_ellipse(xx+27, eyeHeight, 6, this.curEyeHeight);
+		this.draw_ellipse(xx+37, eyeHeight, 6, this.curEyeHeight);
 
 	 	// Flip the canvas back around after drawing
 	 	if (this.isFacingLeft) {
