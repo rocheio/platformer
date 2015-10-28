@@ -105,11 +105,11 @@ function GameCanvas(width, height, groundLevel) {
 
 	/** Load an image to HTML from the /images/ folder. 
 	Begin the animations for that image. */
-	this.load_image = function(name) {
+	this.load_image = function(name, location) {
 		if (!(name in this.images)) {
 			this.images[name] = new Image();
 			this.images[name].onload = this.resource_loaded();
-			this.images[name].src = "images/" + name + ".png";
+			this.images[name].src = 'images/' + location;
 		}
 	}
 
@@ -290,47 +290,47 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 	this.characterImages = [
 		{
 			'imageID': 'soldier-helmet',
-			'location': 'soldier-helmet.png',
+			'imageLocation': 'soldier-helmet.png',
 			'xOffset': -3,
 			'yOffset': 122,
 		}, {
 			'imageID': 'head',
-			'location': 'head.png',
+			'imageLocation': 'head.png',
 			'xOffset': 3,
 			'yOffset': 105,
 		}, {
 			'imageID': 'torso',
-			'location': 'torso.png',
+			'imageLocation': 'torso.png',
 			'xOffset': 0,
 			'yOffset': 80,
 		}, {
 			'imageID': 'legs',
-			'location': 'legs.png',
+			'imageLocation': 'legs.png',
 			'xOffset': 0,
 			'yOffset': 40,
 		}, {
 			'imageID': 'legs-jump',
-			'location': 'legs-jump.png',
+			'imageLocation': 'legs-jump.png',
 			'xOffset': 0,
 			'yOffset': 40,
 		}, {
 			'imageID': 'front-arm',
-			'location': 'front-arm.png',
+			'imageLocation': 'front-arm.png',
 			'xOffset': -5,
 			'yOffset': 70,
 		}, {
 			'imageID': 'front-arm-jump',
-			'location': 'front-arm-jump.png',
+			'imageLocation': 'front-arm-jump.png',
 			'xOffset': -25,
 			'yOffset': 75,
 		}, {
 			'imageID': 'back-arm',
-			'location': 'back-arm.png',
+			'imageLocation': 'back-arm.png',
 			'xOffset': 30,
 			'yOffset': 70,
 		}, {
 			'imageID': 'back-arm-jump',
-			'location': 'back-arm-jump.png',
+			'imageLocation': 'back-arm-jump.png',
 			'xOffset': 40,
 			'yOffset': 75,
 		}
@@ -418,8 +418,9 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 		the parent gameCanvas. */
 	this.load_assets = function() {
 		for (ii=0; ii<this.characterImages.length; ii++) {
-			imageLocation = this.characterImages[ii].imageID;
-			gameCanvas.load_image(imageLocation);
+			imageID = this.characterImages[ii].imageID;			
+			imageLocation = this.characterImages[ii].imageLocation;
+			gameCanvas.load_image(imageID, imageLocation);
 		}
 	}
 
@@ -442,26 +443,6 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 	 	// Set character y position relative to game world
 	 	yy = groundLevel - this.yPosition;
 
-		/*
-		// PUT LINES 250 - 292 INTO LOOPS
-
-	 	imagesToLoad = [characterImages[2],
- 						characterImages[1],
- 						characterImages[0]];
-
-		if (this.isAirborne) {
-			imagesToLoad.push(characterImages[8]);
-			imagesToLoad.push(characterImages[4]);
-			imagesToLoad.push(characterImages[6]);
-		} else {
-			imagesToLoad.push(characterImages[7]);
-			imagesToLoad.push(characterImages[3]);
-			imagesToLoad.push(characterImages[5]);
-		}
-
-		this.draw_all_images(imagesToLoad, xx, groundLevel, breathOffset);
-		*/
-
 		// Draw the character's shadow
 		var shadowHeight = groundLevel - this.yFloor;
 		var shadowWidth = 100 - (this.yPosition - this.yFloor) * 0.8;
@@ -477,35 +458,31 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 			}
 		}
 
-		// Draw the character's back arm
+		// Set the character's dynamic images
 		if (this.isAirborne) {
- 			this.draw_image(characterImages[8], xx, yy, breathOffset);
+			backArm = characterImages[8];
+			frontArm = characterImages[6];
+			legs = characterImages[4];
 		} else {
- 			this.draw_image(characterImages[7], xx, yy, breathOffset);
-		}
-		
-		// Draw the character's legs
-		if (this.isAirborne) {
- 			this.draw_image(characterImages[4], xx, yy, 0);
-		} else {
- 			this.draw_image(characterImages[3], xx, yy, 0);
+			backArm = characterImages[7];
+			frontArm = characterImages[5];
+			legs = characterImages[3];
 		}
 
-		// Draw the character's torso
- 		this.draw_image(characterImages[2], xx, yy, 0);
+		// Draw character dynamic images
+		this.draw_image(backArm, xx, yy, breathOffset);
+		this.draw_image(frontArm, xx, yy, breathOffset);
+		this.draw_image(legs, xx, yy, 0);
 
- 		// Draw the character's head
- 		this.draw_image(characterImages[1], xx, yy, breathOffset);
+		// Set character static images
+		torso = characterImages[2]
+		head = characterImages[1]
+		hat = characterImages[0]
 
- 		// Draw the character's hat
- 		this.draw_image(characterImages[0], xx, yy, breathOffset);
-		
-		// Draw the character's front arm
-		if (this.isAirborne) {
- 			this.draw_image(characterImages[6], xx, yy, breathOffset);
-		} else {
- 			this.draw_image(characterImages[5], xx, yy, breathOffset);
-		}
+		// Draw character static images
+ 		this.draw_image(torso, xx, yy, 0);
+ 		this.draw_image(head, xx, yy, breathOffset);
+ 		this.draw_image(hat, xx, yy, breathOffset);
 
 		// Draw the character's eyes
 	 	eyeHeight = yy-90-breathOffset;
@@ -516,13 +493,6 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 	 	if (this.isFacingLeft) {
 	 		gameCanvas.context.scale(-1, 1);
  		}
-	}
-
-	/** Draw all images passed based on the character's current state. */
-	this.draw_all_images = function(imagesToDraw, xPos, groundLevel, breathOffset) {
-	 	for (ii=0; ii<imagesToDraw.length; ii++) {
-	 		this.draw_image(imagesToDraw[ii], xPos, groundLevel, breathOffset);
-	 	}
 	}
 
 	/** Draw a single image based on imageArguments, etc. */
