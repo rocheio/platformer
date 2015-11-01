@@ -236,7 +236,10 @@ function GameWall(gameCanvas, xPosition, yBottom, yHeight) {
 function GameCharacter(gameCanvas, xPosition, yPosition) {
 	var thisChar = this;
 
-	// Character States
+	// Related objects
+	this.gameCanvas = gameCanvas;
+
+	// Character states
 	this.isFacingLeft = false;
 	this.isPlanningMovement = false;
 	this.isWalking = false;
@@ -244,7 +247,6 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 	this.isAirborne = false;
 
 	// Positional properties
-	this.gameCanvas = gameCanvas;
 	this.xPosition = xPosition || 100;
 	this.yPosition = yPosition || 0;
 	this.yFloor = 0;
@@ -694,6 +696,19 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 		this.isWalking = false;
 		this.isRunning = false;
 	}
+
+	// Respawn properties
+	this.xSpawn = this.xPosition;
+	this.ySpawn = this.yPosition;
+
+	/** Respawn the character. */
+	this.respawn = function() {
+		this.xPosition = this.xSpawn;
+		this.yPosition = this.ySpawn;
+		this.isFacingLeft = false;
+		this.isAirborne = false;
+		this.stop_moving();
+	}
 }
 
 
@@ -778,8 +793,13 @@ window.onload = function () {
         player1.stop_moving();
     });
 
-    // Bind keys for running
+    // Bind key for running
     Mousetrap.bind('r', function() { 
         player1.start_running();
+    });
+
+    // Bind key for respawning
+    Mousetrap.bind('c', function() { 
+        player1.respawn();
     });
 }
