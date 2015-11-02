@@ -33,6 +33,7 @@ function GameCanvas(width, height, groundLevel) {
 	this.characterList = [];
 	this.platformList = [];
 	this.wallList = [];
+	this.spawnList = [];
 	this.platformAreas = [];
 	this.wallAreas = [];
 
@@ -106,6 +107,12 @@ function GameCanvas(width, height, groundLevel) {
 		this.wallAreas.push([newWall.xPosition,
 							 newWall.yBottom,
 							 newWall.yHeight]);
+	}
+
+	/** Add a spawn object to the gameCanvas. */
+	this.add_spawn = function(xStart, xEnd, yHeight) {
+		newspawn = new RespawnArea(this, xStart, xEnd, yHeight);
+		this.spawnList.push(newspawn);
 	}
 
 	/** Load an image to HTML from the /images/ folder. 
@@ -206,7 +213,6 @@ function GamePlatform(gameCanvas, xStart, xEnd, yHeight) {
 }
 
 
-
 /** Represents an in-game wall. */
 function GameWall(gameCanvas, xPosition, yBottom, yHeight) {
 	this.gameCanvas = gameCanvas;
@@ -230,6 +236,37 @@ function GameWall(gameCanvas, xPosition, yBottom, yHeight) {
 	}
 }
 
+
+/** Represents an in-game respawning location. */
+function RespawnArea(gameCanvas, xStart, xEnd, yHeight) {
+	var thisRespawnArea = this;
+
+	this.gameCanvas = gameCanvas;
+	this.xStart = xStart;
+	this.xEnd = xEnd;
+	this.yHeight = yHeight;
+	this.checkRespawnRate = 500;
+	this.checkRespawnInterval = setInterval(function(){
+		thisRespawnArea.tick_check_respawn();
+	}, this.checkRespawnRate);
+
+	/** Check if each character in the gameWorld is on
+		the respawner, and if so, respawn it. */
+	this.tick_check_respawn = function() {
+		var characters = this.gameCanvas.characterList;
+		for (ii = 0; ii < characters.length; ii++) {
+			thisChar = characters[ii];
+
+			// Is this character on the current RespawnArea,
+			// and within its horizontal boundaries?
+			if (thisChar.yPosition === this.yHeight
+					&& thisChar.xPosition >= this.xStart
+					&& thisChar.xPosition <= this.xEnd) {
+				thisChar.respawn();
+			}
+		}
+	}
+}
 
 
 /** Represents an in-game character. */
@@ -727,17 +764,22 @@ window.onload = function () {
 	// Add platform objects to the game world
 	gameCanvas.add_platform(xStart=0, xEnd=800, yHeight=0);
 	gameCanvas.add_platform(xStart=20, xEnd=250, yHeight=125);
-	gameCanvas.add_platform(xStart=365, xEnd=500, yHeight=185);
+	gameCanvas.add_platform(xStart=325, xEnd=500, yHeight=185);
 	gameCanvas.add_platform(xStart=20, xEnd=250, yHeight=250);
+	gameCanvas.add_platform(xStart=325, xEnd=500, yHeight=325);
 
 	// Add wall objects to the game world
 	gameCanvas.add_wall(xPosition=0, yBottom=0, yHeight=1000);
 	gameCanvas.add_wall(xPosition=800, yBottom=0, yHeight=1000);
 
+	// Add respawn areas
+	gameCanvas.add_spawn(xStart=650, xEnd=750, yHeight=310);
+
+
 	// Add one player and two NPCs to the world
 	npc1 = gameCanvas.add_npc(450, 200);
 	npc2 = gameCanvas.add_npc(600, 150);
-	npc3 = gameCanvas.add_npc(700, 700);
+	npc3 = gameCanvas.add_npc(100, 700);
 	player1 = gameCanvas.add_npc(75);
 
     // Bind keys for moving left
