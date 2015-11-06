@@ -8,11 +8,6 @@ function GameCanvas(width, height, groundLevel) {
 	this.canvasWidth = width || 800;
 	this.canvasHeight = height || 600;
 
-	// Frames per second properties
-	this.canvasFPS = 30;
-	this.currentFPS = 0;
-	this.displayFPS = false;
-
 	/** Creates the working game canvas for any browser. */
 	this.prepare_canvas = function(canvasDiv) {
 		// Create the canvas in a way that works with IE.
@@ -152,6 +147,13 @@ function GameCanvas(width, height, groundLevel) {
 			this.context.fillText(fpsText, 5, this.canvasHeight-5);
 		}
 
+		// Create level timer monitor in top left of screen
+		this.context.font = "bold 12px sans-serif";
+		if (this.displayTimer) {
+			timerText = ("lifetime: " + this.timerSeconds.toFixed(1));
+			this.context.fillText(timerText, 5, this.canvasHeight-20);
+		}
+
 		// Draw each character bound to this world
 		for (ii = 0; ii < this.characterList.length; ii++) {
 			characterToDraw = this.characterList[ii];
@@ -170,12 +172,11 @@ function GameCanvas(width, height, groundLevel) {
 			wallToDraw.draw_wall();
 		}
 	}
-	
-	/** Update the fps for this canvas. */
-	this.update_fps = function() {
-		this.currentFPS = this.numFramesDrawn;
-		this.numFramesDrawn = 0;
-	}
+
+	// Frames per second properties
+	this.canvasFPS = 30;
+	this.currentFPS = 0;
+	this.displayFPS = false;
 	
 	/** Add the fps tracker to this canvas. */
 	this.add_fps = function() {
@@ -185,6 +186,36 @@ function GameCanvas(width, height, groundLevel) {
 		this.fpsInterval = setInterval(function(){
 			thisCanvas.update_fps();
 		}, 1000);
+	}
+	
+	/** Update the fps for this canvas. */
+	this.update_fps = function() {
+		this.currentFPS = this.numFramesDrawn;
+		this.numFramesDrawn = 0;
+	}
+
+	// Level timer properties
+	this.timerSeconds = 0.0;
+	this.displayTimer = false;
+	
+	/** Add the level timer to this canvas. */
+	this.add_timer = function() {
+		this.displayTimer = true;
+
+		// Start interval to track frames per second
+		this.timerInterval = setInterval(function(){
+			thisCanvas.update_timer();
+		}, 100);
+	}
+	
+	/** Update the level timer for this canvas. */
+	this.update_timer = function() {
+		this.timerSeconds += 0.1;
+	}
+	
+	/** Update the level timer for this canvas. */
+	this.reset_timer = function() {
+		this.timerSeconds = 0.0;
 	}
 }
 
@@ -745,6 +776,7 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 		this.isFacingLeft = false;
 		this.isAirborne = false;
 		this.stop_moving();
+		this.gameCanvas.reset_timer();
 	}
 }
 
@@ -755,6 +787,7 @@ window.onload = function () {
 	var gameCanvas = new GameCanvas(width=800, height=500, groundLevel=50);
 	gameCanvas.prepare_canvas(document.getElementById("canvas-div"));
 	gameCanvas.add_fps();
+	gameCanvas.add_timer();
 
 	// Add some boxes to the game world
 	gameCanvas.add_box(centerX=400, yBottom=30, width=200, yHeight=30);
