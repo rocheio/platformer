@@ -26,9 +26,7 @@ function GameCanvas(width, height, groundLevel) {
 
 	// Parental properties
 	this.characterList = [];
-	this.platformList = [];
-	this.wallList = [];
-	this.spawnList = [];
+	this.levelObjects = [];
 	this.platformAreas = [];
 	this.wallAreas = [];
 
@@ -89,7 +87,7 @@ function GameCanvas(width, height, groundLevel) {
 	/** Add a platform object to the gameCanvas. */
 	this.add_platform = function(xStart, xEnd, yHeight) {
 		newPlatform = new GamePlatform(this, xStart, xEnd, yHeight);
-		this.platformList.push(newPlatform);
+		this.levelObjects.push(newPlatform);
 		this.platformAreas.push([newPlatform.xStart,
 								 newPlatform.xEnd,
 								 newPlatform.yHeight]);
@@ -98,7 +96,7 @@ function GameCanvas(width, height, groundLevel) {
 	/** Add a wall object to the gameCanvas. */
 	this.add_wall = function(xPosition, yBottom, yHeight) {
 		newWall = new GameWall(this, xPosition, yBottom, yHeight);
-		this.wallList.push(newWall);
+		this.levelObjects.push(newWall);
 		this.wallAreas.push([newWall.xPosition,
 							 newWall.yBottom,
 							 newWall.yHeight]);
@@ -107,7 +105,6 @@ function GameCanvas(width, height, groundLevel) {
 	/** Add a spawn object to the gameCanvas. */
 	this.add_spawn = function(xStart, xEnd, yHeight) {
 		newspawn = new RespawnArea(this, xStart, xEnd, yHeight);
-		this.spawnList.push(newspawn);
 	}
 
 	/** Load an image to HTML from the /images/ folder. 
@@ -134,43 +131,46 @@ function GameCanvas(width, height, groundLevel) {
 		}
 	}
 
+	/** Clear the canvas before drawing another frame. */
+	this.clear_canvas = function() {
+		this.canvas.width = this.canvas.width;		
+	}
+
 	/** Redraw all images on the canvas. */
 	this.redraw_canvas = function() {
-		// Clear the canvas
-		this.canvas.width = this.canvas.width;
-
-		// Create fps monitor in bottom left of screen
+		this.clear_canvas();
 		this.context.font = "bold 12px sans-serif";
+
 		if (this.displayFPS) {
-			fpsText = ("fps: " + this.currentFPS + "/" + this.canvasFPS
-						+ " (" + this.numFramesDrawn + ")");
-			this.context.fillText(fpsText, 5, this.canvasHeight-5);
+			this.draw_fps();
 		}
 
-		// Create level timer monitor in top left of screen
-		this.context.font = "bold 12px sans-serif";
 		if (this.displayTimer) {
-			timerText = ("lifetime: " + this.timerSeconds.toFixed(1));
-			this.context.fillText(timerText, 5, this.canvasHeight-20);
+			this.draw_life_timer();
 		}
 
 		// Draw each character bound to this world
 		for (ii = 0; ii < this.characterList.length; ii++) {
-			characterToDraw = this.characterList[ii];
-			characterToDraw.draw_character();
+			this.characterList[ii].draw();
 		}
 
-		// Draw each platform bound to this world
-		for (ii = 0; ii < this.platformList.length; ii++) {
-			platformToDraw = this.platformList[ii];
-			platformToDraw.draw_platform();
+		// Draw each object bound to this world
+		for (ii = 0; ii < this.levelObjects.length; ii++) {
+			this.levelObjects[ii].draw();
 		}
+	}
 
-		// Draw each wall bound to this world
-		for (ii = 0; ii < this.wallList.length; ii++) {
-			wallToDraw = this.wallList[ii];
-			wallToDraw.draw_wall();
-		}
+	/** Create fps monitor in bottom left of screen */
+	this.draw_fps = function() {
+		fpsText = ("fps: " + this.currentFPS + "/" + this.canvasFPS
+					+ " (" + this.numFramesDrawn + ")");
+		this.context.fillText(fpsText, 5, this.canvasHeight-5);
+	}
+
+	/** Create lifetime timer in bottom left of screen */
+	this.draw_life_timer = function() {
+		timerText = ("lifetime: " + this.timerSeconds.toFixed(1));
+		this.context.fillText(timerText, 5, this.canvasHeight-20);
 	}
 
 	// Frames per second properties
@@ -230,7 +230,7 @@ function GamePlatform(gameCanvas, xStart, xEnd, yHeight) {
 	this.yHeight = yHeight;
 
 	/** Draw this platform on the canvas. */
-	this.draw_platform = function() {
+	this.draw = function() {
 	 	var platformHeight = this.gameCanvas.groundOffset - this.yHeight;
 
 		// Draw the platform on the canvas
@@ -252,7 +252,7 @@ function GameWall(gameCanvas, xPosition, yBottom, yHeight) {
 	this.yHeight = yHeight;
 
 	/** Draw this wall on the canvas. */
-	this.draw_wall = function() {
+	this.draw = function() {
 		var groundOffset = this.gameCanvas.groundOffset;
 		var yBottom = groundOffset - this.yBottom;
 		var yTop = yBottom - this.yHeight;
@@ -530,7 +530,7 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 	}
 
 	/** Draw a single frame of this character on the canvas. */
-	this.draw_character = function() {
+	this.draw = function() {
 		var xPosAdjusted = this.xPosition;
 		var yPosAdjusted = (this.gameCanvas.groundOffset
 						    - this.yPosition);
