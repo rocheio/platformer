@@ -71,22 +71,24 @@ function GameCanvas(width, height, groundLevel) {
 	}
 
 	/** Add a box object to the gameCanvas. */
-	this.add_box = function(centerX, yBottom, width, yHeight) {
+	this.add_box = function(centerX, yBottom, width, yHeight, isFatal) {
 		var halfWidth = width / 2;
 		var halfHeight = yHeight / 2;
 		var leftX = centerX - halfWidth;
 		var rightX = centerX + halfWidth;
 		var topY = yBottom + yHeight;
+		var isFatal = isFatal || false;
 
-		this.add_platform(leftX, rightX, topY);
+		this.add_platform(leftX, rightX, topY, isFatal);
 		this.add_platform(leftX, rightX, yBottom);
 		this.add_wall(leftX, yBottom, yHeight);
 		this.add_wall(rightX, yBottom, yHeight);
 	}
 
 	/** Add a platform object to the gameCanvas. */
-	this.add_platform = function(xStart, xEnd, yHeight) {
-		newPlatform = new GamePlatform(this, xStart, xEnd, yHeight);
+	this.add_platform = function(xStart, xEnd, yHeight, isFatal) {
+		isFatal = isFatal || false;
+		newPlatform = new GamePlatform(this, xStart, xEnd, yHeight, isFatal);
 		this.levelObjects.push(newPlatform);
 		this.platformAreas.push([newPlatform.xStart,
 								 newPlatform.xEnd,
@@ -100,11 +102,6 @@ function GameCanvas(width, height, groundLevel) {
 		this.wallAreas.push([newWall.xPosition,
 							 newWall.yBottom,
 							 newWall.yHeight]);
-	}
-
-	/** Add a spawn object to the gameCanvas. */
-	this.add_spawn = function(xStart, xEnd, yHeight) {
-		newspawn = new RespawnArea(this, xStart, xEnd, yHeight);
 	}
 
 	/** Load an image to HTML from the /images/ folder. 
@@ -220,14 +217,16 @@ function GameCanvas(width, height, groundLevel) {
 }
 
 
-
 /** Represents an in-game platform. */
-function GamePlatform(gameCanvas, xStart, xEnd, yHeight) {
+function GamePlatform(gameCanvas, xStart, xEnd, yHeight, isFatal) {
+	var thisPlatform = this;
+
 	// Positional properties
 	this.gameCanvas = gameCanvas;
 	this.xStart = xStart;
 	this.xEnd = xEnd;
 	this.yHeight = yHeight;
+	this.isFatal = isFatal || false;
 
 	/** Draw this platform on the canvas. */
 	this.draw = function() {
@@ -240,6 +239,26 @@ function GamePlatform(gameCanvas, xStart, xEnd, yHeight) {
 		context.lineTo(this.xEnd, platformHeight);
 		context.stroke();
 		context.closePath();
+	}
+
+	this.fatalityRate = 500;
+	if (this.isFatal) {
+		this.fatlityInterval = setInterval(function(){
+			thisPlatform.tick_check_fatalities();
+		}, this.fatalityRate);
+	}
+
+	/** Check if each active character in the gameWorld is on the 
+		platform, and if it is, kill and respawn it. */
+	this.tick_check_fatalities = function() {
+		var characters = this.gameCanvas.characterList;
+		for (ii = 0; ii < characters.length; ii++) {
+			if (characters[ii].yPosition === this.yHeight
+					&& characters[ii].xPosition >= this.xStart
+					&& characters[ii].xPosition <= this.xEnd) {
+				characters[ii].respawn();
+			}
+		}
 	}
 }
 
@@ -264,38 +283,6 @@ function GameWall(gameCanvas, xPosition, yBottom, yHeight) {
 		context.lineTo(this.xPosition, yTop);
 		context.stroke();
 		context.closePath();
-	}
-}
-
-
-/** Represents an in-game respawning location. */
-function RespawnArea(gameCanvas, xStart, xEnd, yHeight) {
-	var thisRespawnArea = this;
-
-	this.gameCanvas = gameCanvas;
-	this.xStart = xStart;
-	this.xEnd = xEnd;
-	this.yHeight = yHeight;
-	this.checkRespawnRate = 500;
-	this.checkRespawnInterval = setInterval(function(){
-		thisRespawnArea.tick_check_respawn();
-	}, this.checkRespawnRate);
-
-	/** Check if each character in the gameWorld is on
-		the respawner, and if so, respawn it. */
-	this.tick_check_respawn = function() {
-		var characters = this.gameCanvas.characterList;
-		for (ii = 0; ii < characters.length; ii++) {
-			thisChar = characters[ii];
-
-			// Is this character on the current RespawnArea,
-			// and within its horizontal boundaries?
-			if (thisChar.yPosition === this.yHeight
-					&& thisChar.xPosition >= this.xStart
-					&& thisChar.xPosition <= this.xEnd) {
-				thisChar.respawn();
-			}
-		}
 	}
 }
 
@@ -781,6 +768,123 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 }
 
 
+/** Represents a level of the game. */
+function GameLevel(gameCanvas) {
+	var thisLevel = this;
+
+	this.gameCanvas = gameCanvas;
+
+	/** Add a list of box objects to this level. */
+	this.add_boxes = function(boxArgs) {
+		for (var ii = 0; ii < boxArgs.length; ii++) {
+			this.gameCanvas.add_box(boxArgs[ii].centerX,
+									boxArgs[ii].yBottom,
+									boxArgs[ii].width,
+									boxArgs[ii].yHeight,
+									boxArgs[ii].isFatal);
+		}
+	}
+
+	/** Add a list of platform objects to this level. */
+	this.add_platforms = function(platformArgs) {
+		for (var ii = 0; ii < platformArgs.length; ii++) {
+			this.gameCanvas.add_platform(platformArgs[ii].xStart,
+										 platformArgs[ii].xEnd,
+										 platformArgs[ii].yHeight,
+										 platformArgs[ii].isFatal);
+		}
+	}
+
+	/** Add a list of wall objects to this level. */
+	this.add_walls = function(wallArgs) {
+		for (var ii = 0; ii < wallArgs.length; ii++) {
+			this.gameCanvas.add_wall(wallArgs[ii].xPosition,
+									 wallArgs[ii].yBottom,
+									 wallArgs[ii].yHeight);
+		}
+	}
+
+	/** Add a list of npc objects to this level. */
+	this.add_npcs = function(npcArgs) {
+		for (var ii = 0; ii < npcArgs.length; ii++) {
+			this.gameCanvas.add_npc(npcArgs[ii].xPosition,
+									npcArgs[ii].yPosition);
+		}
+	}
+}
+
+
+/** Represents key bindings for a character. */
+function KeyBindings(gameCanvas) {
+	this.gameCanvas = gameCanvas;
+
+	this.bind_defaults = function(character) {
+		// Bind keys for moving left
+	    Mousetrap.bind(['a', 'left'], function() { 
+			character.isPlanningMovement = true;
+	    	character.isFacingLeft = true;
+			character.isWalking = true;
+	        character.start_walking();
+	        //console.log('left');
+	    });
+	    Mousetrap.bind(['a', 'left'], function() {
+			if (character.isFacingLeft) {
+				character.attempt_movement_stop();
+			}
+	        //console.log('left_up');
+	    }, 'keyup');
+
+	    // Bind keys for moving right
+	    Mousetrap.bind(['d', 'right'], function() {
+			character.isPlanningMovement = true;
+	    	character.isFacingLeft = false;
+			character.isWalking = true;
+	        character.start_walking();
+	        //console.log('right');
+	    });
+	    Mousetrap.bind(['d', 'right'], function() {
+			if (!character.isFacingLeft) {
+				character.attempt_movement_stop();
+			}
+	        //console.log('right_up');
+	    }, 'keyup');
+
+	    // Bind keys for jumping
+	    Mousetrap.bind(['w', 'up', 'space'], function(e) {
+	    	// Remove default behavior of buttons (page scrolling)
+	    	if (e.preventDefault()) {
+	    		e.preventDefault();
+	    	} else {
+	    		e.returnValue = false; //IE
+	    	}
+	        character.start_jumping();
+	    });
+
+	    // Bind keys for crouching
+	    Mousetrap.bind(['s', 'down'], function(e) {
+	    	// Remove default behavior of buttons (page scrolling)
+	    	if (e.preventDefault()) {
+	    		e.preventDefault();
+	    	} else {
+	    		e.returnValue = false; //IE
+	    	}
+	        //character.start_crouching();
+	        character.stop_moving();
+	    });
+
+	    // Bind key for running
+	    Mousetrap.bind('r', function() { 
+	        character.start_running();
+	    });
+
+	    // Bind key for respawning
+	    Mousetrap.bind('c', function() { 
+	        character.respawn();
+	    });
+	} 
+}
+
+
 /** Window onload actions. */
 window.onload = function () {
 	// Initialize the game world
@@ -789,92 +893,45 @@ window.onload = function () {
 	gameCanvas.add_fps();
 	gameCanvas.add_timer();
 
-	// Add some boxes to the game world
-	gameCanvas.add_box(centerX=400, yBottom=30, width=200, yHeight=30);
-	gameCanvas.add_box(centerX=650, yBottom=30, width=200, yHeight=60);
-	gameCanvas.add_box(centerX=700, yBottom=280, width=100, yHeight=30);
+	// Add the states for level 1
+	var level1 = new GameLevel(gameCanvas);
 
-	// Add platform objects to the game world
-	gameCanvas.add_platform(xStart=0, xEnd=800, yHeight=0);
-	gameCanvas.add_platform(xStart=20, xEnd=250, yHeight=125);
-	gameCanvas.add_platform(xStart=325, xEnd=500, yHeight=185);
-	gameCanvas.add_platform(xStart=20, xEnd=250, yHeight=250);
-	gameCanvas.add_platform(xStart=325, xEnd=500, yHeight=325);
+	// Box locations for level 1
+	var level1Boxes = [
+		{'centerX': 400, 'yBottom': 30, 'width': 200, 'yHeight': 30, }, 
+		{'centerX': 650, 'yBottom': 30, 'width': 200, 'yHeight': 60, },
+		{'centerX': 700, 'yBottom': 280, 'width': 100, 'yHeight': 30, 'isFatal': true},
+	];
+	level1.add_boxes(level1Boxes);
 
-	// Add wall objects to the game world
-	gameCanvas.add_wall(xPosition=0, yBottom=0, yHeight=1000);
-	gameCanvas.add_wall(xPosition=800, yBottom=0, yHeight=1000);
+	// Platform locations for level 1
+	var level1Platforms = [
+		{'xStart': 0, 'xEnd': 800, 'yHeight': 0, }, 
+		{'xStart': 20, 'xEnd': 250, 'yHeight': 125, },
+		{'xStart': 325, 'xEnd': 500, 'yHeight': 185, },
+		{'xStart': 20, 'xEnd': 250, 'yHeight': 250, },
+		{'xStart': 325, 'xEnd': 500, 'yHeight': 325, },
+		{'xStart': 150, 'xEnd': 300, 'yHeight': 400, 'isFatal': true},
+	];
+	level1.add_platforms(level1Platforms);
 
-	// Add respawn areas
-	gameCanvas.add_spawn(xStart=650, xEnd=750, yHeight=310);
+	// Wall locations for level 1
+	var level1Walls = [
+		{'xPosition': 0, 'yBottom': 0, 'yHeight': 1000, },
+		{'xPosition': 800, 'yBottom': 0, 'yHeight': 1000, },
+	];
+	level1.add_walls(level1Walls);
 
+	// NPC locations for level 1
+	var level1NPCs = [
+		{'xPosition': 450, 'yPosition': 200, },
+		{'xPosition': 600, 'yPosition': 150, },
+		{'xPosition': 100, 'yPosition': 700, },
+	];
+	level1.add_npcs(level1NPCs);
 
-	// Add one player and two NPCs to the world
-	npc1 = gameCanvas.add_npc(450, 200);
-	npc2 = gameCanvas.add_npc(600, 150);
-	npc3 = gameCanvas.add_npc(100, 700);
-	player1 = gameCanvas.add_npc(75);
-
-    // Bind keys for moving left
-    Mousetrap.bind(['a', 'left'], function() { 
-		player1.isPlanningMovement = true;
-    	player1.isFacingLeft = true;
-		player1.isWalking = true;
-        player1.start_walking();
-        //console.log('left');
-    });
-    Mousetrap.bind(['a', 'left'], function() {
-		if (player1.isFacingLeft) {
-			player1.attempt_movement_stop();
-		}
-        //console.log('left_up');
-    }, 'keyup');
-
-    // Bind keys for moving right
-    Mousetrap.bind(['d', 'right'], function() {
-		player1.isPlanningMovement = true;
-    	player1.isFacingLeft = false;
-		player1.isWalking = true;
-        player1.start_walking();
-        //console.log('right');
-    });
-    Mousetrap.bind(['d', 'right'], function() {
-		if (!player1.isFacingLeft) {
-			player1.attempt_movement_stop();
-		}
-        //console.log('right_up');
-    }, 'keyup');
-
-    // Bind keys for jumping
-    Mousetrap.bind(['w', 'up', 'space'], function(e) {
-    	// Remove default behavior of buttons (page scrolling)
-    	if (e.preventDefault()) {
-    		e.preventDefault();
-    	} else {
-    		e.returnValue = false; //IE
-    	}
-        player1.start_jumping();
-    });
-
-    // Bind keys for crouching
-    Mousetrap.bind(['s', 'down'], function(e) {
-    	// Remove default behavior of buttons (page scrolling)
-    	if (e.preventDefault()) {
-    		e.preventDefault();
-    	} else {
-    		e.returnValue = false; //IE
-    	}
-        //player1.start_crouching();
-        player1.stop_moving();
-    });
-
-    // Bind key for running
-    Mousetrap.bind('r', function() { 
-        player1.start_running();
-    });
-
-    // Bind key for respawning
-    Mousetrap.bind('c', function() { 
-        player1.respawn();
-    });
+	// Player controlled character
+	var player1 = gameCanvas.add_npc(75);
+	var bindings = new KeyBindings(gameCanvas);
+	bindings.bind_defaults(player1);
 }
