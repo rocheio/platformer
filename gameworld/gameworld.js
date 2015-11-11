@@ -25,6 +25,7 @@ function GameCanvas(width, height, groundLevel) {
 	}
 
 	// Parental properties
+	this.levelDict = {};
 	this.characterList = [];
 	this.levelObjects = [];
 	this.platformAreas = [];
@@ -59,11 +60,20 @@ function GameCanvas(width, height, groundLevel) {
 	}
 
 	/** Add a new level to this gameCanvas. */
-	this.add_level = function() {
-		newLevel = new GameLevel(this);
+	this.add_level = function(levelName, levelJSON) {
+		var newLevel = new GameLevel(this, levelJSON);
+		this.levelDict[levelName] = newLevel;
 		this.currentLevel = newLevel;
 
 		return newLevel;
+	}
+
+	/** Remove level assets from the gameWorld. */
+	this.remove_level_assets = function() {
+		this.levelObjects = [];
+		this.platformAreas = [];
+		this.wallAreas = [];
+		this.characterList = [];
 	}
 
 	/** Add a new character to this gameCanvas. */
@@ -71,7 +81,7 @@ function GameCanvas(width, height, groundLevel) {
 		var xPosition = xPosition || 0;
 		var yPosition = yPosition || 0;
 
-		newNPC = new GameCharacter(this, xPosition, yPosition);
+		var newNPC = new GameCharacter(this, xPosition, yPosition);
 		newNPC.load_assets();
 		this.characterList.push(newNPC);
 
@@ -807,9 +817,8 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 		this.stop_moving();
 		this.gameCanvas.reset_timer();
 
-		this.gameCanvas.currentLevel.delete_level();
-		level2 = this.gameCanvas.add_level();
-		level2.load_level(new JSONData().get_level_2());
+		this.gameCanvas.remove_level_assets();
+		this.gameCanvas.levelDict["level2"].load_to_canvas();
 		
 		var player1 = gameCanvas.add_npc(75);
 		var bindings = new KeyBindings(gameCanvas);
@@ -890,25 +899,18 @@ function KeyBindings(gameCanvas) {
 
 
 /** Represents a level of the game. */
-function GameLevel(gameCanvas) {
+function GameLevel(gameCanvas, levelJSON) {
 	var thisLevel = this;
 
 	this.gameCanvas = gameCanvas;
+	this.levelJSON = levelJSON;
 
 	/** Load level settings from a JSON object. */
-	this.load_level = function(levelJSON) {
-		this.add_boxes(levelJSON["boxes"]);
-		this.add_platforms(levelJSON["platforms"]);
-		this.add_walls(levelJSON["walls"]);
-		this.add_npcs(levelJSON["NPCs"]);
-	}
-
-	/** Remove level settings from the gameWorld. */
-	this.delete_level = function(levelJSON) {
-		this.gameCanvas.levelObjects = [];
-		this.gameCanvas.platformAreas = [];
-		this.gameCanvas.wallAreas = [];
-		this.gameCanvas.characterList = [];
+	this.load_to_canvas = function() {
+		this.add_boxes(this.levelJSON["boxes"]);
+		this.add_platforms(this.levelJSON["platforms"]);
+		this.add_walls(this.levelJSON["walls"]);
+		this.add_npcs(this.levelJSON["NPCs"]);
 	}
 
 	/** Add a list of box objects to this level. */
@@ -1016,12 +1018,13 @@ window.onload = function () {
 	gameCanvas.prepare_canvas(document.getElementById("canvas-div"));
 	gameCanvas.add_fps();
 	gameCanvas.add_timer();
+	gameCanvas.add_level("level1", new JSONData().get_level_1());
+	gameCanvas.add_level("level2", new JSONData().get_level_2());
 
-	// Add the states for level 1
-	level1 = gameCanvas.add_level();
-	level1.load_level(new JSONData().get_level_1());
+	// Load first level
+	gameCanvas.levelDict["level1"].load_to_canvas();
 
-	// Player controlled character
+	// Create player controlled character
 	var player1 = gameCanvas.add_npc(75);
 	var bindings = new KeyBindings(gameCanvas);
 	bindings.bind_defaults(player1);
