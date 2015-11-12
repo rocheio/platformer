@@ -25,6 +25,7 @@ function GameCanvas(width, height, groundLevel) {
 	}
 
 	// Parental properties
+	this.levelOrder = [];
 	this.levelDict = {};
 	this.characterList = [];
 	this.levelObjects = [];
@@ -62,18 +63,32 @@ function GameCanvas(width, height, groundLevel) {
 	/** Add a new level to this gameCanvas. */
 	this.add_level = function(levelName, levelJSON) {
 		var newLevel = new GameLevel(this, levelJSON);
+		this.levelOrder.push(levelName);
 		this.levelDict[levelName] = newLevel;
-		this.currentLevel = newLevel;
 
 		return newLevel;
 	}
 
 	/** Remove level assets from the gameWorld. */
 	this.remove_level_assets = function() {
-		this.levelObjects = [];
-		this.platformAreas = [];
-		this.wallAreas = [];
-		this.characterList = [];
+		this.levelDict[this.currentLevel].clear_intervals();
+		this.levelObjects.length = 0;
+		this.platformAreas.length = 0;
+		this.wallAreas.length = 0;
+		this.characterList.length = 0;
+	}
+
+	/** Teleport the character to the next level. */
+	this.next_level = function() {
+		this.remove_level_assets();
+
+		var levelIndex = this.levelOrder.indexOf(this.currentLevel);
+		if (levelIndex+1 === this.levelOrder.length) {
+			this.currentLevel = this.levelOrder[0];
+		} else {
+			this.currentLevel = this.levelOrder[levelIndex+1];
+		}
+		this.levelDict[this.currentLevel].load_level();
 	}
 
 	/** Add a new character to this gameCanvas. */
@@ -265,9 +280,10 @@ function GamePlatform(gameCanvas, xStart, xEnd, yHeight, isFatal, isEndpoint) {
 
 	this.fatalityRate = 500;
 	if (this.isFatal) {
-		this.fatlityInterval = setInterval(function(){
+		var level = this.gameCanvas.levelDict[this.gameCanvas.currentLevel];
+		level.levelIntervals.push(setInterval(function(){
 			thisPlatform.tick_check_fatalities();
-		}, this.fatalityRate);
+		}, this.fatalityRate));
 	}
 
 	/** Check if each active character in the gameWorld is on the 
@@ -285,9 +301,10 @@ function GamePlatform(gameCanvas, xStart, xEnd, yHeight, isFatal, isEndpoint) {
 
 	this.endpointRate = 500;
 	if (this.isEndpoint) {
-		this.endpointInterval = setInterval(function(){
+		var level = this.gameCanvas.levelDict[this.gameCanvas.currentLevel];
+		level.levelIntervals.push(setInterval(function(){
 			thisPlatform.tick_check_endpoints();
-		}, this.endpointRate);
+		}, this.endpointRate));
 	}
 
 	/** Check if each active character in the gameWorld is on the 
@@ -298,7 +315,7 @@ function GamePlatform(gameCanvas, xStart, xEnd, yHeight, isFatal, isEndpoint) {
 			if (characters[ii].yPosition === this.yHeight
 					&& characters[ii].xPosition >= this.xStart
 					&& characters[ii].xPosition <= this.xEnd) {
-				characters[ii].change_level();
+				this.gameCanvas.next_level();
 			}
 		}
 	}
@@ -807,23 +824,6 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 		this.stop_moving();
 		this.gameCanvas.reset_timer();
 	}
-
-	/** Teleport the character to another level. */
-	this.change_level = function() {
-		this.xPosition = this.xSpawn;
-		this.yPosition = this.ySpawn;
-		this.isFacingLeft = false;
-		this.isAirborne = false;
-		this.stop_moving();
-		this.gameCanvas.reset_timer();
-
-		this.gameCanvas.remove_level_assets();
-		this.gameCanvas.levelDict["level2"].load_to_canvas();
-		
-		var player1 = gameCanvas.add_npc(75);
-		var bindings = new KeyBindings(gameCanvas);
-		bindings.bind_defaults(player1);
-	}
 }
 
 
@@ -904,17 +904,34 @@ function GameLevel(gameCanvas, levelJSON) {
 
 	this.gameCanvas = gameCanvas;
 	this.levelJSON = levelJSON;
+	this.levelIntervals = [];
 
 	/** Load level settings from a JSON object. */
-	this.load_to_canvas = function() {
+	this.load_level = function() {
+		// Add level objects to the canvas
 		this.add_boxes(this.levelJSON["boxes"]);
 		this.add_platforms(this.levelJSON["platforms"]);
 		this.add_walls(this.levelJSON["walls"]);
 		this.add_npcs(this.levelJSON["NPCs"]);
+		
+		// Spawn a new player character to the canvas
+		var xSpawn = this.levelJSON.xSpawn;
+		var ySpawn = this.levelJSON.ySpawn;
+		var player1 = this.gameCanvas.add_npc(xSpawn, ySpawn);
+		var bindings = new KeyBindings(this.gameCanvas);
+		bindings.bind_defaults(player1);
+	}
+
+	/** Clear all intervals associated with objects in this level. */
+	this.clear_intervals = function() {
+		for (var ii = 0; ii < this.levelIntervals.length; ii++) {
+			clearInterval(this.levelIntervals[ii]);
+		}
 	}
 
 	/** Add a list of box objects to this level. */
 	this.add_boxes = function(boxArgs) {
+		boxArgs = boxArgs || [];
 		for (var ii = 0; ii < boxArgs.length; ii++) {
 			this.gameCanvas.add_box(boxArgs[ii].centerX,
 									boxArgs[ii].yBottom,
@@ -927,6 +944,7 @@ function GameLevel(gameCanvas, levelJSON) {
 
 	/** Add a list of platform objects to this level. */
 	this.add_platforms = function(platformArgs) {
+		platformArgs = platformArgs || [];
 		for (var ii = 0; ii < platformArgs.length; ii++) {
 			this.gameCanvas.add_platform(platformArgs[ii].xStart,
 										 platformArgs[ii].xEnd,
@@ -938,6 +956,7 @@ function GameLevel(gameCanvas, levelJSON) {
 
 	/** Add a list of wall objects to this level. */
 	this.add_walls = function(wallArgs) {
+		wallArgs = wallArgs || [];
 		for (var ii = 0; ii < wallArgs.length; ii++) {
 			this.gameCanvas.add_wall(wallArgs[ii].xPosition,
 									 wallArgs[ii].yBottom,
@@ -947,6 +966,7 @@ function GameLevel(gameCanvas, levelJSON) {
 
 	/** Add a list of npc objects to this level. */
 	this.add_npcs = function(npcArgs) {
+		npcArgs = npcArgs || [];
 		for (var ii = 0; ii < npcArgs.length; ii++) {
 			this.gameCanvas.add_npc(npcArgs[ii].xPosition,
 									npcArgs[ii].yPosition);
@@ -960,18 +980,65 @@ function JSONData() {
 	/** Return the JSON data for level 1. */
 	this.get_level_1 = function() {
 		jsonData = {
+			"xSpawn": 35,
+			"ySpawn": 200,
+			"boxes": [
+				{"centerX": 100, "yBottom": 0, "width": 200, "yHeight": 200, }, 
+				{"centerX": 400, "yBottom": 0, "width": 100, "yHeight": 200, },
+				{"centerX": 750, "yBottom": 0, "width": 100, "yHeight": 200, "isEndpoint": true, },
+			],
+			"platforms": [
+				{"xStart": 0, "xEnd": 800, "yHeight": 0, "isFatal": true, },
+			],
+			"walls": [
+				{"xPosition": 0, "yBottom": 0, "yHeight": 1000, },
+				{"xPosition": 800, "yBottom": 0, "yHeight": 1000, },
+			],
+		};
+		return jsonData;
+	}
+
+	/** Return the JSON data for level 2. */
+	this.get_level_2 = function() {
+		jsonData = {
+			"xSpawn": 75,
+			"ySpawn": 125,
+			"boxes": [
+				{"centerX": 400, "yBottom": 30, "width": 200, "yHeight": 30, }, 
+				{"centerX": 700, "yBottom": 200, "width": 100, "yHeight": 30, "isEndpoint": true},
+			],
+			"platforms": [
+				{"xStart": 0, "xEnd": 800, "yHeight": 0, "isFatal": true, },
+				{"xStart": 20, "xEnd": 250, "yHeight": 125, },
+				{"xStart": 325, "xEnd": 500, "yHeight": 185, },
+			],
+			"walls": [
+				{"xPosition": 0, "yBottom": 0, "yHeight": 1000, },
+				{"xPosition": 800, "yBottom": 0, "yHeight": 1000, },
+			],
+			"NPCs": [
+				{"xPosition": 450, "yPosition": 200, },
+			],
+		};
+		return jsonData;
+	}
+
+	/** Return the JSON data for level 3. */
+	this.get_level_3 = function() {
+		jsonData = {
+			"xSpawn": 75,
+			"ySpawn": 125,
 			"boxes": [
 				{"centerX": 400, "yBottom": 30, "width": 200, "yHeight": 30, }, 
 				{"centerX": 650, "yBottom": 30, "width": 200, "yHeight": 60, },
 				{"centerX": 700, "yBottom": 280, "width": 100, "yHeight": 30, "isEndpoint": true},
 			],
 			"platforms": [
-				{"xStart": 0, "xEnd": 800, "yHeight": 0, }, 
+				{"xStart": 0, "xEnd": 800, "yHeight": 0, "isFatal": true, },
 				{"xStart": 20, "xEnd": 250, "yHeight": 125, },
 				{"xStart": 325, "xEnd": 500, "yHeight": 185, },
 				{"xStart": 20, "xEnd": 250, "yHeight": 250, },
 				{"xStart": 325, "xEnd": 500, "yHeight": 325, },
-				{"xStart": 150, "xEnd": 300, "yHeight": 400, "isFatal": true},
 			],
 			"walls": [
 				{"xPosition": 0, "yBottom": 0, "yHeight": 1000, },
@@ -981,29 +1048,6 @@ function JSONData() {
 				{"xPosition": 450, "yPosition": 200, },
 				{"xPosition": 600, "yPosition": 150, },
 				{"xPosition": 100, "yPosition": 700, },
-			],
-		};
-		return jsonData;
-	}
-
-	/** Return the JSON data for level 2. */
-	this.get_level_2 = function() {
-		jsonData = {
-			"boxes": [
-				{"centerX": 400, "yBottom": 30, "width": 200, "yHeight": 30, }, 
-				{"centerX": 700, "yBottom": 280, "width": 100, "yHeight": 30, "isFatal": true},
-			],
-			"platforms": [
-				{"xStart": 0, "xEnd": 800, "yHeight": 0, }, 
-				{"xStart": 20, "xEnd": 250, "yHeight": 125, },
-				{"xStart": 325, "xEnd": 500, "yHeight": 185, },
-			],
-			"walls": [
-				{"xPosition": 0, "yBottom": 0, "yHeight": 1000, },
-				{"xPosition": 800, "yBottom": 0, "yHeight": 1000, },
-			],
-			"NPCs": [
-				{"xPosition": 450, "yPosition": 200, },
 			],
 		};
 		return jsonData;
@@ -1020,12 +1064,9 @@ window.onload = function () {
 	gameCanvas.add_timer();
 	gameCanvas.add_level("level1", new JSONData().get_level_1());
 	gameCanvas.add_level("level2", new JSONData().get_level_2());
+	gameCanvas.add_level("level3", new JSONData().get_level_3());
 
 	// Load first level
-	gameCanvas.levelDict["level1"].load_to_canvas();
-
-	// Create player controlled character
-	var player1 = gameCanvas.add_npc(75);
-	var bindings = new KeyBindings(gameCanvas);
-	bindings.bind_defaults(player1);
+	gameCanvas.currentLevel = "level1";
+	gameCanvas.levelDict["level1"].load_level();
 }
