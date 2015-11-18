@@ -4,59 +4,66 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Evolving Gameworld</title>
-  <link rel="stylesheet" type='text/css'
-        href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
-  <link rel='stylesheet' type='text/css'
-        href='https://fonts.googleapis.com/css?family=News+Cycle:400,700'>
+  <link rel="stylesheet" type="text/css" 
+        href="http://yui.yahooapis.com/pure/0.6.0/pure-min.css">
+  <link rel="stylesheet" type="text/css" 
+        href="http://yui.yahooapis.com/pure/0.6.0/grids-responsive-min.css">
   <link rel="stylesheet" type='text/css'
         href="../index.css">
   <link rel="stylesheet" type='text/css'
-        href="gameworld.css">
+        href="./gameworld.css">
   <script language="javascript" type="text/javascript" 
           src="../resources/mousetrap.js" async></script>
   <script language="javascript" type="text/javascript" 
           src="gameworld.js" async></script>
 </head>
 <body>
-<div class="headerbackground"></div>
-<div class="container">
-  <header>
-    <div class="titlebox">
-      <div class="pagetitle">
-        <a href="../index.html">roche.io</a>
-      </div>
-      <div class="subtitle">
-        andy's home on the internet
-      </div>
-    </div>
-    <nav>
-      <a href="../index.html">Home</a>
-      <a href="../pomodoro/pomodoro.html">Pomodoro</a>
-      <a href="./gameworld.html" class="currentpagelink">Gameworld</a>
-    </nav>
-  </header>
-  <div id="canvas-div"></div>
-  <p>
-    I'm learning to design browser-based games from the ground up. For added motivation, I decided to build everything here in public. What you see is the game so far.
-    <br><br>
-    You can follow my development
-    <a href="https://github.com/rocheio/rocheio.github.io/tree/master/gameworld" target="_blank">on Github.</a>
-  </p>
-  <h1>Basic Controls:</h1>
-  <ul>
-    <li>[A, Left]: Move left</li>
-    <li>[D, Right]: Move right</li>
-    <li>[W, Up, Space]: Jump</li>
-    <li>[S, Down]: Stop movement</li>
-    <li>[R]: Run</li>
-    <li>[C]: Respawn</li>
-  </ul>
-  <p>That's all for now. Come back next week to see what's new!</p>
-  <p>
-    Thanks to 
-    <a href="http://www.williammalone.com/articles/create-html5-canvas-javascript-game-character/" target="_blank">William Malone</a> 
-    for the guide that got me started
-  </p>
+
+<div class="header">
+  <h1 class="site-title">roche.io</h1>
+  <h2 class="site-tagline">andy's home on the internet</h2>
+
+  <nav class="nav">
+      <ul class="nav-list">
+          <li class="nav-item">
+              <a class="pure-button" href="../index.html">Home</a>
+          </li>
+          <li class="nav-item">
+              <a class="pure-button" href="../pomodoro/pomodoro.html">Pomodoro</a>
+          </li>
+          <li class="nav-item">
+              <a class="pure-button" href="../gameworld/gameworld.html">Gameworld</a>
+          </li>
+      </ul>
+  </nav>
 </div>
+
+<div class="panel">
+  <div id="canvas-div"></div>
+</div>
+
+<div class="panel pure-g">
+  <div class="content pure-u-1 pure-u-md-1-2">
+    <h1>About:</h1>
+    <p>
+      I'm learning to design browser-based games from the ground up. For added motivation, I decided to build everything here in public. What you see is the game so far.
+      <br><br>
+      You can follow my development
+      <a href="https://github.com/rocheio/rocheio.github.io/tree/master/gameworld" target="_blank">on Github.</a>
+    </p>
+  </div>
+  <div class="content pure-u-1 pure-u-md-1-2">
+    <h1>Basic Controls:</h1>
+    <ul>
+      <li>[A, Left]: Move left</li>
+      <li>[D, Right]: Move right</li>
+      <li>[W, Up, Space]: Jump</li>
+      <li>[S, Down]: Stop movement</li>
+      <li>[R]: Run</li>
+      <li>[C]: Respawn</li>
+    </ul>
+  </div>
+</div>
+
 </body>
 </html>

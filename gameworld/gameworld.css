@@ -1,7 +1,44 @@
-.container {
-    min-width: 925px;
+.header {
+    padding: 1em;
+    margin: 0 auto;
+    margin-bottom: 1%;
+    background: #0098D8;
+    color: #fff;
 }
+
+.panel {
+    max-width: 910px;
+    margin: 0 auto;
+}
+
 .canvas {
     border: 2px solid black;
-    margin-bottom: 20px;
+    background: #FFF;
+}
+
+.content {
+    margin: ;
+}
+
+h1 {
+    margin: 0;
+}
+
+@media (min-width: 48em) {
+    .content {
+        padding: 0.5em 1em 0;
+        margin: auto;
+    }
+
+    .header {
+        padding: 1em;
+        margin: 0 auto;
+        margin-bottom: 1%;
+        text-align: center;
+    }
+
+    .sidebar {
+        position: static;
+        border: none;
+    }
 }
