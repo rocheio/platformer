@@ -1,3 +1,20 @@
+var MAXIMUM_CANVAS_WIDTH = 0;
+var MAXIMUM_CANVAS_HEIGHT = 0;
+
+/** Global function to hide the game canvas HTML element
+	if the screen is too small to display it. */
+function check_display_canvas() {
+	if (window.innerWidth < MAXIMUM_CANVAS_WIDTH) {
+		document.getElementById("canvas").style.visibility = "hidden";
+		document.getElementById("canvas").height = 0;
+		document.getElementById("canvas-message").style.visibility = "visible";
+	} else {
+		document.getElementById("canvas").style.visibility = "visible";
+		document.getElementById("canvas").height = MAXIMUM_CANVAS_HEIGHT;
+		document.getElementById("canvas-message").style.visibility = "hidden";
+	}
+}
+
 /** Represents an HTML canvas on which a game is
 	being played. */
 function GameCanvas(width, height, groundLevel) {
@@ -6,7 +23,9 @@ function GameCanvas(width, height, groundLevel) {
 	// Canvas properties
 	this.canvas = document.createElement("canvas");
 	this.canvasWidth = width || 800;
+	MAXIMUM_CANVAS_WIDTH = this.canvasWidth;
 	this.canvasHeight = height || 600;
+	MAXIMUM_CANVAS_HEIGHT = this.canvasHeight;
 
 	/** Creates the working game canvas for any browser. */
 	this.prepare_canvas = function(canvasDiv) {
@@ -1064,12 +1083,13 @@ function Database() {
 
 
 /** Main function executed on program load. */
-window.onload = function () {
+window.onload = function () {	
 	// Create a new game world with fps and timer
 	var gameCanvas = new GameCanvas(width=900, height=600, groundLevel=50);
 	gameCanvas.prepare_canvas(document.getElementById("canvas-div"));
 	gameCanvas.add_fps();
 	gameCanvas.add_timer();
+	check_display_canvas();
 
 	// Add levels to the game world from JSON data
 	var database = new Database();

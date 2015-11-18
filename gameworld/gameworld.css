@@ -1,9 +1,10 @@
 .header {
+    background: #0098D8;
+    color: #fff;
     padding: 1em;
     margin: 0 auto;
     margin-bottom: 1%;
-    background: #0098D8;
-    color: #fff;
+    border-bottom: 1px solid #777;
 }
 
 .panel {
@@ -16,8 +17,14 @@
     background: #FFF;
 }
 
+#canvas-message {
+    text-align: center;
+    font-weight: bold;
+    margin: 0 1em;
+}
+
 .content {
-    margin: ;
+    margin: 0;
 }
 
 h1 {
@@ -27,7 +34,7 @@ h1 {
 @media (min-width: 48em) {
     .content {
         padding: 0.5em 1em 0;
-        margin: auto;
+        margin: 0;
     }
 
     .header {
