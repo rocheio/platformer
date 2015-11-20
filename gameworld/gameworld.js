@@ -62,29 +62,33 @@ function GameCanvas(width, height, groundLevel) {
 
 	/** Change the level to the next in sequence, or the
 		first if currently on the last level. */
-	this.change_level = function() {
+	this.load_next_level = function() {
 		this.reset_canvas();
-		this.add_default_boundaries();
 
-		var levelIndex = this.levelOrder.indexOf(this.currentLevelName);
+		var levelName = this.currentLevelName;
+		var levelIndex = this.levelOrder.indexOf(levelName);
+
 		if (levelIndex+1 === this.levelOrder.length) {
-			this.currentLevelName = this.levelOrder[0];
+			levelName = this.levelOrder[0];
 		} else {
-			this.currentLevelName = this.levelOrder[levelIndex+1];
+			levelName = this.levelOrder[levelIndex+1];
 		}
 
-		this.load_current_level();
-		this.spawn_player();
+		this.load_level(levelName);
 	}
 
 	/** Load current level settings to the canvas. */
-	this.load_current_level = function() {
-		this.currentLevel = this.levelDict[this.currentLevelName];
+	this.load_level = function(levelName) {
+		this.currentLevelName = levelName;
+		this.currentLevel = this.levelDict[levelName];
 
+		this.add_default_boundaries();
 		this.currentLevel.add_boxes(this.currentLevel.levelJSON["boxes"]);
 		this.currentLevel.add_platforms(this.currentLevel.levelJSON["platforms"]);
 		this.currentLevel.add_walls(this.currentLevel.levelJSON["walls"]);
 		this.currentLevel.add_npcs(this.currentLevel.levelJSON["NPCs"]);
+
+		this.spawn_player();
 	}
 
 	/** Spawn a new player character to the canvas. */
@@ -197,8 +201,12 @@ function GameCanvas(width, height, groundLevel) {
 			this.draw_fps();
 		}
 
-		if (this.displayTimer) {
-			this.draw_life_timer();
+		if (this.displaySecondsAlive) {
+			this.draw_seconds_alive();
+		}
+
+		if (this.displayLevelName) {
+			this.draw_level_name();
 		}
 
 		// Draw each character bound to this world
@@ -221,39 +229,33 @@ function GameCanvas(width, height, groundLevel) {
 	this.numFramesDrawn = 0;
 
 	// Gravity properties
-	this.gravityRate = 25;
-	this.gravityAmount = 4;
+	this.gravityRate = 15;
+	this.gravityAmount = 3;
 	this.gravityInterval = setInterval(function(){
 		thisCanvas.tick_gravity();
 	}, this.gravityRate);
 
-	/** Reduce each character"s yPosition until it
+	/** Reduce each character's yPosition until it
 		reaches the ground or a solid object. */
 	this.tick_gravity = function() {
 		for (ii = 0; ii < this.characterList.length; ii++) {
 			thisChar = this.characterList[ii];
 
-			if (!thisChar.is_at_yfloor()) {
+			if (!thisChar.is_at_yfloor()
+				&& !thisChar.isJumping) {
 				thisChar.yPosition -= this.gravityAmount;
-				thisChar.start_falling();
+
+				if (!thisChar.isAirborne) {
+					thisChar.start_falling();
+				}
 			}
 		}
 	}
 
-	/** Create fps monitor in bottom left of screen */
-	this.draw_fps = function() {
-		fpsText = ("fps: " + this.currentFPS + "/" + this.canvasFPS
-					+ " (" + this.numFramesDrawn + ")");
-		this.context.fillText(fpsText, 5, this.canvasHeight-5);
-	}
+	/*
+	 * FRAMES PER SECOND
+	 */
 
-	/** Create lifetime timer in bottom left of screen */
-	this.draw_life_timer = function() {
-		timerText = ("lifetime: " + this.timerSeconds.toFixed(1));
-		this.context.fillText(timerText, 5, this.canvasHeight-20);
-	}
-
-	// Frames per second properties
 	this.canvasFPS = 30;
 	this.currentFPS = 0;
 	this.displayFPS = false;
@@ -274,13 +276,23 @@ function GameCanvas(width, height, groundLevel) {
 		this.numFramesDrawn = 0;
 	}
 
-	// Level timer properties
-	this.timerSeconds = 0.0;
-	this.displayTimer = false;
+	/** Create fps monitor in bottom left of screen */
+	this.draw_fps = function() {
+		fpsText = ("fps: " + this.currentFPS + "/" + this.canvasFPS
+					+ " (" + this.numFramesDrawn + ")");
+		this.context.fillText(fpsText, 5, this.canvasHeight-5);
+	}
+
+	/*
+	 * SECONDS ALIVE TIMER
+	 */
+
+	this.secondsAlive = 0.0;
+	this.displaySecondsAlive = false;
 	
-	/** Add the level timer to this canvas. */
+	/** Add the timer to this canvas. */
 	this.add_timer = function() {
-		this.displayTimer = true;
+		this.displaySecondsAlive = true;
 
 		// Start interval to track frames per second
 		this.timerInterval = setInterval(function(){
@@ -288,14 +300,32 @@ function GameCanvas(width, height, groundLevel) {
 		}, 100);
 	}
 	
-	/** Update the level timer for this canvas. */
+	/** Update the timer for this canvas. */
 	this.update_timer = function() {
-		this.timerSeconds += 0.1;
+		this.secondsAlive += 0.1;
 	}
 	
-	/** Update the level timer for this canvas. */
+	/** Update the timer for this canvas. */
 	this.reset_timer = function() {
-		this.timerSeconds = 0.0;
+		this.secondsAlive = 0.0;
+	}
+
+	/** Create lifetime timer in bottom left of screen */
+	this.draw_seconds_alive = function() {
+		timerText = ("lifetime: " + this.secondsAlive.toFixed(1));
+		this.context.fillText(timerText, 5, this.canvasHeight-20);
+	}
+
+	/*
+	 * LEVEL NAME
+	 */
+
+	this.displayLevelName = false;
+
+	/** Draw level name in top left of window. */
+	this.draw_level_name = function() {
+		var levelName = this.currentLevel.levelJSON['name'];
+		this.context.fillText(levelName, 5, 20);
 	}
 }
 
@@ -362,7 +392,7 @@ function GamePlatform(gameCanvas, xLeft, xRight, yBottom, isFatal, isEndpoint) {
 			if (characters[ii].yPosition === this.yBottom
 					&& characters[ii].xPosition >= this.xLeft
 					&& characters[ii].xPosition <= this.xRight) {
-				this.gameCanvas.change_level();
+				this.gameCanvas.load_next_level();
 			}
 		}
 	}
@@ -406,6 +436,7 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 	this.isWalking = false;
 	this.isRunning = false;
 	this.isAirborne = false;
+	this.isJumping = false;
 
 	// Positional properties
 	this.xPosition = xPosition || 100;
@@ -758,23 +789,39 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 		}
 	}
 
-	/** Make the character jump. */
-	this.start_jumping = function() {
+	/** Make the character jump as much as it is able. */
+	this.attempt_jump = function() {
 		if (!this.isAirborne) {
-			this.yPosition += this.jumpHeight;
+			this.isJumping = true;
+
+			var jumpIncrement = this.jumpHeight / 12;
+			var maxHeight = this.yPosition + this.jumpHeight;
+			this.jumpUpInterval = setInterval(function(){
+				thisChar.ascend(maxHeight, jumpIncrement);
+			}, this.gameCanvas.gravityRate);
+
+			this.start_falling();
+		}
+	}
+
+	/** Make the character ascend upward. */
+	this.ascend = function(maxHeight, jumpIncrement) {
+		if (thisChar.yPosition < maxHeight) {
+			thisChar.yPosition += jumpIncrement;
+		} else {
+			clearInterval(thisChar.jumpUpInterval);
+			thisChar.isJumping = false;
 		}
 	}
 
 	/** Make the character fall. */
 	this.start_falling = function() {
-		if (!this.isAirborne) {
-			this.isAirborne = true;
-			this.checkAirborneInterval = setInterval(function(){
-				if (thisChar.is_at_yfloor()) {
-					thisChar.end_hangtime();
-				}
-			}, 50);
-		}
+		this.isAirborne = true;
+		this.checkAirborneInterval = setInterval(function(){
+			if (thisChar.is_at_yfloor()) {
+				thisChar.end_hangtime();
+			}
+		}, 50);
 	}
 
 	/** Land after hanging in the air from
@@ -917,7 +964,7 @@ function KeyBindings(gameCanvas) {
 	    	} else {
 	    		e.returnValue = false; //IE
 	    	}
-	        character.start_jumping();
+	        character.attempt_jump();
 	    });
 
 	    // Bind keys for crouching
@@ -1010,6 +1057,7 @@ function GameLevel(gameCanvas, levelJSON) {
 function Database() {
 	this.levelJSON = {
 		"level1": {
+			"name": "Level 1",
 			"xSpawn": 35,
 			"ySpawn": 200,
 			"boxes": [
@@ -1024,6 +1072,7 @@ function Database() {
 			],
 		},
 		"level2": {
+			"name": "Level 2",
 			"xSpawn": 35,
 			"ySpawn": 200,
 			"boxes": [
@@ -1036,6 +1085,7 @@ function Database() {
 			],
 		},
 		"level3": {
+			"name": "Level 3",
 			"xSpawn": 35,
 			"ySpawn": 50,
 			"boxes": [
@@ -1046,6 +1096,7 @@ function Database() {
 			],
 		},
 		"level4": {
+			"name": "Level 4",
 			"xSpawn": 35,
 			"ySpawn": 400,
 			"boxes": [
@@ -1054,6 +1105,7 @@ function Database() {
 			],
 		},
 		"level5": {
+			"name": "Level 5",
 			"xSpawn": 75,
 			"ySpawn": 125,
 			"boxes": [
@@ -1089,6 +1141,7 @@ window.onload = function () {
 	gameCanvas.prepare_canvas(document.getElementById("canvas-div"));
 	gameCanvas.add_fps();
 	gameCanvas.add_timer();
+	gameCanvas.displayLevelName = true;
 	check_display_canvas();
 
 	// Add levels to the game world from JSON data
@@ -1099,12 +1152,6 @@ window.onload = function () {
 							 database.get_level(levels[ii]));
 	}
 
-	// Set the first level and spawn the player
-	gameCanvas.currentLevelName = "level1";
-	gameCanvas.load_current_level();
-	gameCanvas.add_default_boundaries();
-	gameCanvas.spawn_player();
-
-	// Clear memory before runtime
+	gameCanvas.load_level("level1");
 	delete database;
 }
