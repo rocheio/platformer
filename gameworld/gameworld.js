@@ -69,6 +69,7 @@ function GameCanvas(width, height, groundLevel) {
 		var levelIndex = this.levelOrder.indexOf(levelName);
 
 		if (levelIndex+1 === this.levelOrder.length) {
+			this.reset_game_timer();
 			levelName = this.levelOrder[0];
 		} else {
 			levelName = this.levelOrder[levelIndex+1];
@@ -201,8 +202,12 @@ function GameCanvas(width, height, groundLevel) {
 			this.draw_fps();
 		}
 
-		if (this.displaySecondsAlive) {
-			this.draw_seconds_alive();
+		if (this.displayCurrentTime) {
+			this.draw_current_time();
+		}
+
+		if (this.bestSecondsPlayed !== 0.0) {
+			this.draw_best_time();
 		}
 
 		if (this.displayLevelName) {
@@ -252,10 +257,6 @@ function GameCanvas(width, height, groundLevel) {
 		}
 	}
 
-	/*
-	 * FRAMES PER SECOND
-	 */
-
 	this.canvasFPS = 30;
 	this.currentFPS = 0;
 	this.displayFPS = false;
@@ -283,16 +284,15 @@ function GameCanvas(width, height, groundLevel) {
 		this.context.fillText(fpsText, 5, this.canvasHeight-5);
 	}
 
-	/*
-	 * SECONDS ALIVE TIMER
-	 */
-
-	this.secondsAlive = 0.0;
-	this.displaySecondsAlive = false;
+	this.currentSecondsPlayed = 0.0;
+	this.bestSecondsPlayed = 0.0;
+	this.displayCurrentTime = false;
+	this.displayBestTime = false;
 	
 	/** Add the timer to this canvas. */
 	this.add_timer = function() {
-		this.displaySecondsAlive = true;
+		this.displayCurrentTime = true;
+		this.displayBestTime = true;
 
 		// Start interval to track frames per second
 		this.timerInterval = setInterval(function(){
@@ -300,32 +300,40 @@ function GameCanvas(width, height, groundLevel) {
 		}, 100);
 	}
 	
-	/** Update the timer for this canvas. */
+	/** Update the timer for this game world. */
 	this.update_timer = function() {
-		this.secondsAlive += 0.1;
+		this.currentSecondsPlayed += 0.1;
 	}
 	
-	/** Update the timer for this canvas. */
-	this.reset_timer = function() {
-		this.secondsAlive = 0.0;
+	/** Reset the game timer and recalc the best time recorded. */
+	this.reset_game_timer = function() {
+		if (this.currentSecondsPlayed < this.bestSecondsPlayed
+				|| this.bestSecondsPlayed == 0.0) {
+			this.bestSecondsPlayed = this.currentSecondsPlayed;
+		}
+		this.currentSecondsPlayed = 0.0;
 	}
 
-	/** Create lifetime timer in bottom left of screen */
-	this.draw_seconds_alive = function() {
-		timerText = ("lifetime: " + this.secondsAlive.toFixed(1));
-		this.context.fillText(timerText, 5, this.canvasHeight-20);
+	/** Draw the current playtime of this character. */
+	this.draw_current_time = function() {
+		var timerText = ("Current Time: " + this.currentSecondsPlayed.toFixed(1));
+		this.context.fillText(timerText, 5, 35);
 	}
 
-	/*
-	 * LEVEL NAME
-	 */
+	/** Draw the best playtime of this character. */
+	this.draw_best_time = function() {
+		var timerText = ("Best Time: " + this.bestSecondsPlayed.toFixed(1));
+		this.context.fillText(timerText, 5, 50);
+	}
 
 	this.displayLevelName = false;
 
 	/** Draw level name in top left of window. */
 	this.draw_level_name = function() {
 		var levelName = this.currentLevel.levelJSON['name'];
+		this.context.font = "bold 16px sans-serif";
 		this.context.fillText(levelName, 5, 20);
+		this.context.font = "bold 12px sans-serif";
 	}
 }
 
@@ -916,7 +924,6 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 		this.isFacingLeft = false;
 		this.isAirborne = false;
 		this.stop_moving();
-		this.gameCanvas.reset_timer();
 	}
 }
 
