@@ -1,16 +1,16 @@
-var MAXIMUM_CANVAS_WIDTH = 0;
-var MAXIMUM_CANVAS_HEIGHT = 0;
+MINIMUM_CANVAS_WIDTH = 0;
+MINIMUM_CANVAS_HEIGHT = 0;
 
 /** Global function to hide the game canvas HTML element
 	if the screen is too small to display it. */
 function check_display_canvas() {
-	if (window.innerWidth < MAXIMUM_CANVAS_WIDTH) {
+	if (window.innerWidth < MINIMUM_CANVAS_WIDTH) {
 		document.getElementById("canvas").style.visibility = "hidden";
 		document.getElementById("canvas").height = 0;
 		document.getElementById("canvas-message").style.visibility = "visible";
 	} else {
 		document.getElementById("canvas").style.visibility = "visible";
-		document.getElementById("canvas").height = MAXIMUM_CANVAS_HEIGHT;
+		document.getElementById("canvas").height = MINIMUM_CANVAS_HEIGHT;
 		document.getElementById("canvas-message").style.visibility = "hidden";
 	}
 }
@@ -23,9 +23,9 @@ function GameCanvas(width, height, groundLevel) {
 	// Canvas properties
 	this.canvas = document.createElement("canvas");
 	this.canvasWidth = width || 800;
-	MAXIMUM_CANVAS_WIDTH = this.canvasWidth;
+	MINIMUM_CANVAS_WIDTH = this.canvasWidth;
 	this.canvasHeight = height || 600;
-	MAXIMUM_CANVAS_HEIGHT = this.canvasHeight;
+	MINIMUM_CANVAS_HEIGHT = this.canvasHeight;
 
 	/** Creates the working game canvas for any browser. */
 	this.prepare_canvas = function(canvasDiv) {
@@ -47,11 +47,6 @@ function GameCanvas(width, height, groundLevel) {
 	this.levelOrder = [];
 	this.levelDict = {};
 	this.currentLevelName = "";
-
-	this.characterList = [];
-	this.levelObjects = [];
-	this.platformAreas = [];
-	this.wallAreas = [];
 
 	/** Add a new level to this gameCanvas. */
 	this.add_level = function(levelName, levelJSON) {
@@ -83,7 +78,7 @@ function GameCanvas(width, height, groundLevel) {
 		this.currentLevelName = levelName;
 		this.currentLevel = this.levelDict[levelName];
 
-		this.add_default_boundaries();
+		this.load_default_boundaries();
 		this.currentLevel.add_boxes(this.currentLevel.levelJSON["boxes"]);
 		this.currentLevel.add_platforms(this.currentLevel.levelJSON["platforms"]);
 		this.currentLevel.add_walls(this.currentLevel.levelJSON["walls"]);
@@ -96,15 +91,20 @@ function GameCanvas(width, height, groundLevel) {
 	this.spawn_player = function() {
 		var xSpawn = this.currentLevel.levelJSON.xSpawn;
 		var ySpawn = this.currentLevel.levelJSON.ySpawn;
-		var player1 = this.add_npc(xSpawn, ySpawn);
-		var bindings = new KeyBindings(this);
-		bindings.bind_defaults(player1);
+		var player1 = this.currentLevel.add_npc(xSpawn, ySpawn);
+		var bindings = new KeyBindings(player1);
+		bindings.bind_defaults();
 	}
+
+	// Playtime object arrays
+	this.platformAreas = [];
+	this.wallAreas = [];
+	this.characterList = [];
 
 	/** Remove level assets from the gameWorld. */
 	this.reset_canvas = function() {
 		this.currentLevel.clear_intervals();
-		this.levelObjects.length = 0;
+		this.currentLevel.levelObjects.length = 0;
 		this.platformAreas.length = 0;
 		this.wallAreas.length = 0;
 		this.characterList.length = 0;
@@ -112,56 +112,12 @@ function GameCanvas(width, height, groundLevel) {
 
 	/** Add two walls and two platforms to the canvas
 		to form boundaries at the edges. */
-	this.add_default_boundaries = function() {
-		this.add_wall(0, 0, this.canvasHeight);
-		this.add_wall(this.canvasWidth, 0, this.canvasHeight);
-		this.add_platform(0, this.canvasWidth, 0, true);
-		this.add_platform(0, this.canvasWidth, this.canvasHeight);
-	}
-
-	/** Add a new character to this gameCanvas. */
-	this.add_npc = function(xPosition, yPosition) {
-		var xPosition = xPosition || 0;
-		var yPosition = yPosition || 0;
-
-		var newNPC = new GameCharacter(this, xPosition, yPosition);
-		newNPC.load_assets();
-		this.characterList.push(newNPC);
-
-		return newNPC;
-	}
-
-	/** Add a box object to the gameCanvas. */
-	this.add_box = function(xLeft, xRight, yBottom, yHeight, isFatal, isEndpoint) {
-		var isFatal = isFatal || false;
-		var isEndpoint = isEndpoint || false;
-		var yTop = yBottom + yHeight;
-
-		this.add_platform(xLeft, xRight, yTop, isFatal, isEndpoint);
-		this.add_platform(xLeft, xRight, yBottom);
-		this.add_wall(xLeft, yBottom, yHeight);
-		this.add_wall(xRight, yBottom, yHeight);
-	}
-
-	/** Add a platform object to the gameCanvas. */
-	this.add_platform = function(xLeft, xRight, yBottom, isFatal, isEndpoint) {
-		isFatal = isFatal || false;
-		isEndpoint = isEndpoint || false;
-		newPlatform = new GamePlatform(this, xLeft, xRight, yBottom, 
-									   isFatal, isEndpoint);
-		this.levelObjects.push(newPlatform);
-		this.platformAreas.push([newPlatform.xLeft,
-								 newPlatform.xRight,
-								 newPlatform.yBottom]);
-	}
-
-	/** Add a wall object to the gameCanvas. */
-	this.add_wall = function(xPosition, yBottom, yHeight) {
-		newWall = new GameWall(this, xPosition, yBottom, yHeight);
-		this.levelObjects.push(newWall);
-		this.wallAreas.push([newWall.xPosition,
-							 newWall.yBottom,
-							 newWall.yHeight]);
+	this.load_default_boundaries = function() {
+		var level = this.currentLevel;
+		level.add_wall(0, 0, this.canvasHeight);
+		level.add_wall(this.canvasWidth, 0, this.canvasHeight);
+		level.add_platform(0, this.canvasWidth, 0, true);
+		level.add_platform(0, this.canvasWidth, this.canvasHeight);
 	}
 
 	/** Load an image to HTML from the /images/ folder. 
@@ -196,7 +152,7 @@ function GameCanvas(width, height, groundLevel) {
 	/** Redraw all images on the canvas. */
 	this.redraw_canvas = function() {
 		this.clear_canvas();
-		this.context.font = "bold 12px sans-serif";
+		this.context.font = "12px sans-serif";
 
 		if (this.displayFPS) {
 			this.draw_fps();
@@ -215,13 +171,13 @@ function GameCanvas(width, height, groundLevel) {
 		}
 
 		// Draw each character bound to this world
-		for (ii = 0; ii < this.characterList.length; ii++) {
+		for (var ii=0; ii<this.characterList.length; ii++) {
 			this.characterList[ii].draw();
 		}
 
 		// Draw each object bound to this world
-		for (ii = 0; ii < this.levelObjects.length; ii++) {
-			this.levelObjects[ii].draw();
+		for (var ii=0; ii<this.currentLevel.levelObjects.length; ii++) {
+			this.currentLevel.levelObjects[ii].draw();
 		}
 	}
 
@@ -243,11 +199,11 @@ function GameCanvas(width, height, groundLevel) {
 	/** Reduce each character's yPosition until it
 		reaches the ground or a solid object. */
 	this.tick_gravity = function() {
-		for (ii = 0; ii < this.characterList.length; ii++) {
-			thisChar = this.characterList[ii];
+		for (var ii=0; ii<this.characterList.length; ii++) {
+			var thisChar = this.characterList[ii];
 
 			if (!thisChar.is_at_yfloor()
-				&& !thisChar.isJumping) {
+					&& !thisChar.isJumping) {
 				thisChar.yPosition -= this.gravityAmount;
 
 				if (!thisChar.isAirborne) {
@@ -331,9 +287,113 @@ function GameCanvas(width, height, groundLevel) {
 	/** Draw level name in top left of window. */
 	this.draw_level_name = function() {
 		var levelName = this.currentLevel.levelJSON['name'];
+		var previousFont = this.context.font;
 		this.context.font = "bold 16px sans-serif";
 		this.context.fillText(levelName, 5, 20);
-		this.context.font = "bold 12px sans-serif";
+		this.context.font = previousFont;
+	}
+}
+
+
+/** Represents a level of the game. */
+function GameLevel(gameCanvas, levelJSON) {
+	var thisLevel = this;
+
+	this.gameCanvas = gameCanvas;
+	this.levelJSON = levelJSON;
+	this.levelIntervals = [];
+	this.levelObjects = [];
+
+	/** Clear all intervals associated with objects in this level. */
+	this.clear_intervals = function() {
+		for (var ii=0; ii<this.levelIntervals.length; ii++) {
+			clearInterval(this.levelIntervals[ii]);
+		}
+	}
+
+	/** Add a box object to the gameCanvas. */
+	this.add_box = function(xLeft, xRight, yBottom, yHeight, isFatal, isEndpoint) {
+		var isFatal = isFatal || false;
+		var isEndpoint = isEndpoint || false;
+		var yTop = yBottom + yHeight;
+
+		this.add_platform(xLeft, xRight, yTop, isFatal, isEndpoint);
+		this.add_platform(xLeft, xRight, yBottom);
+		this.add_wall(xLeft, yBottom, yHeight);
+		this.add_wall(xRight, yBottom, yHeight);
+	}
+
+	/** Add a list of box objects from JSON to this level. */
+	this.add_boxes = function(boxArgs) {
+		var boxArgs = boxArgs || [];
+		for (var ii=0; ii<boxArgs.length; ii++) {
+			this.add_box(boxArgs[ii].xLeft,
+						 boxArgs[ii].xRight,
+						 boxArgs[ii].yBottom,
+						 boxArgs[ii].yHeight,
+						 boxArgs[ii].isFatal,
+						 boxArgs[ii].isEndpoint);
+		}
+	}
+
+	/** Add a platform object to the gameCanvas. */
+	this.add_platform = function(xLeft, xRight, yBottom, isFatal, isEndpoint) {
+		isFatal = isFatal || false;
+		isEndpoint = isEndpoint || false;
+		newPlatform = new GamePlatform(this.gameCanvas, xLeft, xRight, yBottom, 
+									   isFatal, isEndpoint);
+		this.levelObjects.push(newPlatform);
+		this.gameCanvas.platformAreas.push([xLeft, xRight, yBottom]);
+	}
+
+	/** Add a list of platform objects from JSON to this level. */
+	this.add_platforms = function(platformArgs) {
+		var platformArgs = platformArgs || [];
+		for (var ii=0; ii<platformArgs.length; ii++) {
+			this.add_platform(platformArgs[ii].xLeft,
+							  platformArgs[ii].xRight,
+							  platformArgs[ii].yBottom,
+							  platformArgs[ii].isFatal,
+							  platformArgs[ii].isEndpoint);
+		}
+	}
+
+	/** Add a wall object to the gameCanvas. */
+	this.add_wall = function(xPosition, yBottom, yHeight) {
+		var newWall = new GameWall(this.gameCanvas, xPosition, yBottom, yHeight);
+		this.levelObjects.push(newWall);
+		this.gameCanvas.wallAreas.push([xPosition, yBottom, yHeight]);
+	}
+
+	/** Add a list of wall objects from JSON to this level. */
+	this.add_walls = function(wallArgs) {
+		var wallArgs = wallArgs || [];
+		for (var ii=0; ii<wallArgs.length; ii++) {
+			this.add_wall(wallArgs[ii].xPosition,
+						  wallArgs[ii].yBottom,
+						  wallArgs[ii].yHeight);
+		}
+	}
+
+	/** Add a new character to this gameCanvas. */
+	this.add_npc = function(xPosition, yPosition) {
+		var xPosition = xPosition || 0;
+		var yPosition = yPosition || 0;
+
+		var newNPC = new GameCharacter(this.gameCanvas, xPosition, yPosition);
+		newNPC.load_assets();
+		this.gameCanvas.characterList.push(newNPC);
+
+		return newNPC;
+	}
+
+	/** Add a list of npc objects from JSON to this level. */
+	this.add_npcs = function(npcArgs) {
+		var npcArgs = npcArgs || [];
+		for (var ii=0; ii<npcArgs.length; ii++) {
+			this.add_npc(npcArgs[ii].xPosition,
+						 npcArgs[ii].yPosition);
+		}
 	}
 }
 
@@ -375,7 +435,7 @@ function GamePlatform(gameCanvas, xLeft, xRight, yBottom, isFatal, isEndpoint) {
 		platform, and if it is, kill and respawn it. */
 	this.tick_check_fatalities = function() {
 		var characters = this.gameCanvas.characterList;
-		for (ii = 0; ii < characters.length; ii++) {
+		for (var ii=0; ii<characters.length; ii++) {
 			if (characters[ii].yPosition === this.yBottom
 					&& characters[ii].xPosition >= this.xLeft
 					&& characters[ii].xPosition <= this.xRight) {
@@ -396,7 +456,7 @@ function GamePlatform(gameCanvas, xLeft, xRight, yBottom, isFatal, isEndpoint) {
 		platform, and if it is, teleport it to the next level. */
 	this.tick_check_endpoints = function() {
 		var characters = this.gameCanvas.characterList;
-		for (ii = 0; ii < characters.length; ii++) {
+		for (var ii=0; ii<characters.length; ii++) {
 			if (characters[ii].yPosition === this.yBottom
 					&& characters[ii].xPosition >= this.xLeft
 					&& characters[ii].xPosition <= this.xRight) {
@@ -469,8 +529,8 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 
 		// Check every wall in the character"s game world
 		wallAreas = this.gameCanvas.wallAreas;
-		for (jj = 0; jj < wallAreas.length; jj++) {
-			wallArea = wallAreas[jj];
+		for (var ii=0; ii<wallAreas.length; ii++) {
+			wallArea = wallAreas[ii];
 			wallXPosition = wallArea[0];
 			wallBottomY = wallArea[1];
 			wallTopY = wallArea[1] + wallArea[2];
@@ -488,9 +548,6 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 
 		return false;
 	}
-
-	// Character Asset Lists
-	this.characterImages = [];
 
 	// Default images for now
 	this.characterImages = [
@@ -545,9 +602,9 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 	/** Return true if this character is on a platform
 		or would be the next time gravity ticks. */
 	this.is_at_yfloor = function() {
-		this.find_yfloor(this.gameCanvas.platformAreas);
+		this.find_yfloor();
 
-		nextYPosition = this.yPosition - this.gameCanvas.gravityAmount;
+		var nextYPosition = this.yPosition - this.gameCanvas.gravityAmount;
 		
 		if (nextYPosition <= this.yFloor) {
 			this.yPosition = this.yFloor;
@@ -557,31 +614,18 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 		}
 	}
 
-	/** Return true if this character is directly below a platform. */
-	this.is_below_yceiling = function() {
-		this.find_yceiling(this.gameCanvas.platformAreas);
-
-		var headLevel = this.yPosition + this.yCollisionHeight;
-		var jumpLevel = headLevel + this.jumpHeight;
-
-		if (jumpLevel <= this.yCeiling) {
-			return true;
-		} else {
-			return false;
-		}
-	}
-
 	/** Find the highest object below the character and set its
 		floor so that it does not fall below it. */
-	this.find_yfloor = function(platformAreas) {
+	this.find_yfloor = function() {
 		var newYFloor = 0;
+		var platformAreas = this.gameCanvas.platformAreas;
 
 		// Check every platform in the character"s game world
-		for (jj = 0; jj < platformAreas.length; jj++) {
-			platformArea = platformAreas[jj];
-			platformStartX = platformArea[0];
-			platformEndX = platformArea[1];
-			platformY = platformArea[2];
+		for (var ii=0; ii<platformAreas.length; ii++) {
+			var platformArea = platformAreas[ii];
+			var platformStartX = platformArea[0];
+			var platformEndX = platformArea[1];
+			var platformY = platformArea[2];
 
 			// Is this character above the current platform,
 			// within its horizontal boundaries, and is the platform
@@ -597,14 +641,26 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 		this.yFloor = newYFloor;
 	}
 
+	/** Return true if this character is directly below a platform. */
+	this.is_below_yceiling = function() {
+		this.find_yceiling();
+		var headLevel = this.yPosition + this.yCollisionHeight;
+		if (headLevel <= this.yCeiling) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+
 	/** Find the lowest object above the character and set its
 		ceiling so that it cannot jump above it. */
-	this.find_yceiling = function(platformAreas) {
+	this.find_yceiling = function() {
 		var newYCeiling = this.gameCanvas.canvasHeight;
+		var platformAreas = this.gameCanvas.platformAreas;
 
 		// Check every platform in the character"s game world
-		for (jj = 0; jj < platformAreas.length; jj++) {
-			var platformArea = platformAreas[jj];
+		for (var ii = 0; ii < platformAreas.length; ii++) {
+			var platformArea = platformAreas[ii];
 			var platformStartX = platformArea[0];
 			var platformEndX = platformArea[1];
 			var platformY = platformArea[2];
@@ -654,9 +710,9 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 	/** Load the images needed for this character to 
 		the parent gameCanvas. */
 	this.load_assets = function() {
-		for (ii=0; ii<this.characterImages.length; ii++) {
-			imageID = this.characterImages[ii].imageID;			
-			imageLocation = this.characterImages[ii].imageLocation;
+		for (var ii=0; ii<this.characterImages.length; ii++) {
+			var imageID = this.characterImages[ii].imageID;			
+			var imageLocation = this.characterImages[ii].imageLocation;
 			gameCanvas.load_image(imageID, imageLocation);
 		}
 	}
@@ -675,19 +731,19 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 
 		// Set the character"s dynamic images if jumping or falling
 		if (this.isAirborne) {
-			backArm = this.characterImages[8];
-			frontArm = this.characterImages[6];
-			legs = this.characterImages[4];
+			var backArm = this.characterImages[8];
+			var frontArm = this.characterImages[6];
+			var legs = this.characterImages[4];
 		} else {
-			backArm = this.characterImages[7];
-			frontArm = this.characterImages[5];
-			legs = this.characterImages[3];
+			var backArm = this.characterImages[7];
+			var frontArm = this.characterImages[5];
+			var legs = this.characterImages[3];
 		}
 
 		// Set character static images
-		torso = this.characterImages[2];
-		head = this.characterImages[1];
-		hat = this.characterImages[0];
+		var torso = this.characterImages[2];
+		var head = this.characterImages[1];
+		var hat = this.characterImages[0];
 
 		// Draw each part of the character
  		this.draw_shadow(xPosAdjusted);
@@ -709,9 +765,9 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 
 	/** Draw a single image based on imageArguments, etc. */
 	this.draw_image = function(imageArguments, xPos, yPos, breathOffset) {
- 		imageToDraw = this.gameCanvas.images[imageArguments["imageID"]];
- 		drawWidth = xPos + imageArguments["xOffset"];
- 		drawHeight = (yPos - imageArguments["yOffset"] - breathOffset);
+ 		var imageToDraw = this.gameCanvas.images[imageArguments["imageID"]];
+ 		var drawWidth = xPos + imageArguments["xOffset"];
+ 		var drawHeight = (yPos - imageArguments["yOffset"] - breathOffset);
  		this.gameCanvas.context.drawImage(imageToDraw, drawWidth, drawHeight);
 	}
 
@@ -721,31 +777,26 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 		var shadowWidth = (100 - this.currentBreath
 						   - (this.yPosition - this.yFloor) * 0.8);
 		if (shadowWidth > 0) {
-			this.draw_ellipse(centerX+5, centerY, 
-							  shadowWidth, 4);
+			this.draw_ellipse(centerX+5, centerY, shadowWidth, 4);
 		}
 	}
 
 	/** Draw the character"s eyes for the current frame. */
 	this.draw_eyes = function(xPos, yPos) {
 	 	var eyeHeight = yPos - 88 - this.currentBreath;
-		this.draw_ellipse(xPos+6, eyeHeight, 
-						  6, this.curEyeHeight);
-		this.draw_ellipse(xPos+16, eyeHeight, 
-						  6, this.curEyeHeight);
+		this.draw_ellipse(xPos+6, eyeHeight, 6, this.curEyeHeight);
+		this.draw_ellipse(xPos+16, eyeHeight, 6, this.curEyeHeight);
 	}
 
 	/** Draw an ellipse on the canvas. */
 	this.draw_ellipse = function(centerX, centerY, width, height, color) {
-	 	context = this.gameCanvas.context;
+	 	var context = this.gameCanvas.context;
 
 		// Calculate coordinates for drawing curves
-		halfWidth = width / 2;
-		halfHeight = height / 2;
-		leftX = centerX - halfWidth;
-		rightX = centerX + halfWidth;
-		topY = centerY - halfHeight;
-		bottomY = centerY + halfHeight;
+		var leftX = centerX - width/2;
+		var rightX = centerX + width/2;
+		var topY = centerY - height/2;
+		var bottomY = centerY + height/2;
 
 		// Draw the left and right curves of the ellipse
 		context.beginPath();
@@ -782,18 +833,18 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 		this.eyeOpenTime += this.blinkUpdateTime;
 
 		if (this.eyeOpenTime >= this.timeBtwBlinks) {
-			this.blink();
+			this.animate_blink();
 		}
 	}
 
-	/** Make the character blink. */
-	this.blink = function() {
+	/** Make the character blink over a few frames. */
+	this.animate_blink = function() {
 		thisChar.curEyeHeight -= 1;
 		if (thisChar.curEyeHeight <= 0) {
 			thisChar.eyeOpenTime = 0;
 			thisChar.curEyeHeight = thisChar.maxEyeHeight;
 		} else {
-			thisChar.blinkTimeout = setTimeout(thisChar.blink, 10);
+			thisChar.blinkTimeout = setTimeout(thisChar.animate_blink, 10);
 		}
 	}
 
@@ -845,7 +896,6 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 	/** Make the character walk. */
 	this.start_walking = function() {
     	clearTimeout(this.stopMovingTimeout);
-
 		if (!this.is_colliding()) {
 			this.step_forward();
 
@@ -865,15 +915,12 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 	/** Step in the directino the character is facing. */
 	this.step_forward = function() {
 		var stepAmount = this.stepSize;
-
 		if (this.isFacingLeft) {
 			stepAmount *= -1;
 		}
-
 		if (this.isRunning) {
 			stepAmount *= this.runMultiplier;
 		}
-
 		this.xPosition += stepAmount;
 	}
 
@@ -929,10 +976,12 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 
 
 /** Represents key bindings for a character. */
-function KeyBindings(gameCanvas) {
-	this.gameCanvas = gameCanvas;
+function KeyBindings(character) {
+	this.character = character;
 
-	this.bind_defaults = function(character) {
+	this.bind_defaults = function() {
+		var character = this.character;
+
 		// Bind keys for moving left
 	    Mousetrap.bind(["a", "left"], function() { 
 			character.isPlanningMovement = true;
@@ -996,67 +1045,6 @@ function KeyBindings(gameCanvas) {
 	        character.respawn();
 	    });
 	} 
-}
-
-
-/** Represents a level of the game. */
-function GameLevel(gameCanvas, levelJSON) {
-	var thisLevel = this;
-
-	this.gameCanvas = gameCanvas;
-	this.levelJSON = levelJSON;
-	this.levelIntervals = [];
-
-	/** Clear all intervals associated with objects in this level. */
-	this.clear_intervals = function() {
-		for (var ii = 0; ii < this.levelIntervals.length; ii++) {
-			clearInterval(this.levelIntervals[ii]);
-		}
-	}
-
-	/** Add a list of box objects from JSON to this level. */
-	this.add_boxes = function(boxArgs) {
-		boxArgs = boxArgs || [];
-		for (var ii = 0; ii < boxArgs.length; ii++) {
-			this.gameCanvas.add_box(boxArgs[ii].xLeft,
-									boxArgs[ii].xRight,
-									boxArgs[ii].yBottom,
-									boxArgs[ii].yHeight,
-									boxArgs[ii].isFatal,
-									boxArgs[ii].isEndpoint);
-		}
-	}
-
-	/** Add a list of platform objects from JSON to this level. */
-	this.add_platforms = function(platformArgs) {
-		platformArgs = platformArgs || [];
-		for (var ii = 0; ii < platformArgs.length; ii++) {
-			this.gameCanvas.add_platform(platformArgs[ii].xLeft,
-										 platformArgs[ii].xRight,
-										 platformArgs[ii].yBottom,
-										 platformArgs[ii].isFatal,
-										 platformArgs[ii].isEndpoint);
-		}
-	}
-
-	/** Add a list of wall objects from JSON to this level. */
-	this.add_walls = function(wallArgs) {
-		wallArgs = wallArgs || [];
-		for (var ii = 0; ii < wallArgs.length; ii++) {
-			this.gameCanvas.add_wall(wallArgs[ii].xPosition,
-									 wallArgs[ii].yBottom,
-									 wallArgs[ii].yHeight);
-		}
-	}
-
-	/** Add a list of npc objects from JSON to this level. */
-	this.add_npcs = function(npcArgs) {
-		npcArgs = npcArgs || [];
-		for (var ii = 0; ii < npcArgs.length; ii++) {
-			this.gameCanvas.add_npc(npcArgs[ii].xPosition,
-									npcArgs[ii].yPosition);
-		}
-	}
 }
 
 
@@ -1143,7 +1131,7 @@ function Database() {
 
 /** Main function executed on program load. */
 window.onload = function () {	
-	// Create a new game world with fps and timer
+	// Create a new game world with desired settings
 	var gameCanvas = new GameCanvas(width=900, height=600, groundLevel=50);
 	gameCanvas.prepare_canvas(document.getElementById("canvas-div"));
 	gameCanvas.add_fps();
@@ -1153,12 +1141,9 @@ window.onload = function () {
 
 	// Add levels to the game world from JSON data
 	var database = new Database();
-	var levels = Object.keys(database.levelJSON);
-	for (var ii = 0; ii < levels.length; ii++) {
-		gameCanvas.add_level(levels[ii], 
-							 database.get_level(levels[ii]));
+	for (var level in database.levelJSON) {
+		gameCanvas.add_level(level, database.get_level(level));
 	}
-
 	gameCanvas.load_level("level1");
 	delete database;
 }
