@@ -130,27 +130,29 @@ function GameCanvas(width, height, groundLevel) {
 		}
 	}
 
-	/** Add resource to total number on page and redraw_canvas. 
+	/** Add resource to total number on page and draw_canvas_frame. 
 		Needs the gameCanvas as a parameter since it is called 
 		from an image element onload(). */
 	this.resource_loaded = function() {
 		this.numResourcesLoaded += 1;
 
 		if (this.numResourcesLoaded === this.startDrawingLimit) {
-			this.canvasInterval = setInterval(function(){
-				thisCanvas.redraw_canvas();
-				thisCanvas.numFramesDrawn += 1;
+			this.attemptDrawInterval = setInterval(function(){
+				thisCanvas.attempt_draw_frame();
 			}, 1000/this.canvasFPS);
 		}
 	}
 
-	/** Clear the canvas before drawing another frame. */
-	this.clear_canvas = function() {
-		this.canvas.width = this.canvas.width;		
+	/** Attempt to draw the next frame of the canvas. */
+	this.attempt_draw_frame = function() {
+		if (!this.isPaused) {
+			this.draw_canvas_frame();
+			thisCanvas.numFramesDrawn += 1;
+		}
 	}
 
 	/** Redraw all images on the canvas. */
-	this.redraw_canvas = function() {
+	this.draw_canvas_frame = function() {
 		this.clear_canvas();
 		this.context.font = "12px sans-serif";
 
@@ -179,6 +181,11 @@ function GameCanvas(width, height, groundLevel) {
 		for (var ii=0; ii<this.currentLevel.levelObjects.length; ii++) {
 			this.currentLevel.levelObjects[ii].draw();
 		}
+	}
+
+	/** Clear the canvas before drawing another frame. */
+	this.clear_canvas = function() {
+		this.canvas.width = this.canvas.width;		
 	}
 
 	// Physics properties
@@ -258,7 +265,9 @@ function GameCanvas(width, height, groundLevel) {
 	
 	/** Update the timer for this game world. */
 	this.update_timer = function() {
-		this.currentSecondsPlayed += 0.1;
+		if (!this.isPaused) {
+			this.currentSecondsPlayed += 0.1;
+		}
 	}
 	
 	/** Reset the game timer and recalc the best time recorded. */
@@ -291,6 +300,22 @@ function GameCanvas(width, height, groundLevel) {
 		this.context.font = "bold 16px sans-serif";
 		this.context.fillText(levelName, 5, 20);
 		this.context.font = previousFont;
+	}
+
+	this.isPaused = false;
+	
+	/** Pause all motion on this GameCanvas. */
+	this.pause = function() {
+		this.isPaused = true;
+		clearInterval(this.gravityInterval);
+	}
+	
+	/** Restore all motion on this GameCanvas. */
+	this.unpause = function() {
+		this.isPaused = false;
+		this.gravityInterval = setInterval(function(){
+			thisCanvas.tick_gravity();
+		}, this.gravityRate);
 	}
 }
 
@@ -921,7 +946,9 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 		if (this.isRunning) {
 			stepAmount *= this.runMultiplier;
 		}
-		this.xPosition += stepAmount;
+		if (!this.gameCanvas.isPaused) {
+			this.xPosition += stepAmount;
+		}
 	}
 
 	/** Make the character start running. */
@@ -1036,7 +1063,7 @@ function KeyBindings(character) {
 	    });
 
 	    // Bind key for running
-	    Mousetrap.bind("r", function() { 
+	    Mousetrap.bind("q", function() { 
 	        character.start_running();
 	    });
 
@@ -1044,7 +1071,17 @@ function KeyBindings(character) {
 	    Mousetrap.bind("c", function() { 
 	        character.respawn();
 	    });
-	} 
+
+	    // Bind key for pausing
+	    Mousetrap.bind("z", function() {
+	    	var canvas = character.gameCanvas;
+	    	if (canvas.isPaused) {
+	    		canvas.unpause();
+	    	} else {
+	    		canvas.pause();
+	    	}
+	    });
+	}
 }
 
 
