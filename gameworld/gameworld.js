@@ -104,7 +104,7 @@ function GameCanvas(width, height, groundLevel) {
 	/** Remove level assets from the gameWorld. */
 	this.reset_canvas = function() {
 		this.currentLevel.clear_intervals();
-		this.currentLevel.levelObjects.length = 0;
+		this.currentLevel.objects.length = 0;
 		this.platformAreas.length = 0;
 		this.wallAreas.length = 0;
 		this.characterList.length = 0;
@@ -172,15 +172,13 @@ function GameCanvas(width, height, groundLevel) {
 			this.draw_level_name();
 		}
 
-		// Draw each character bound to this world
-		for (var ii=0; ii<this.characterList.length; ii++) {
-			this.characterList[ii].draw();
-		}
+		this.characterList.forEach(function(character) {
+			character.draw();
+		});
 
-		// Draw each object bound to this world
-		for (var ii=0; ii<this.currentLevel.levelObjects.length; ii++) {
-			this.currentLevel.levelObjects[ii].draw();
-		}
+		this.currentLevel.objects.forEach(function(object) {
+			object.draw();
+		});
 	}
 
 	/** Clear the canvas before drawing another frame. */
@@ -326,18 +324,18 @@ function GameLevel(gameCanvas, levelJSON) {
 
 	this.gameCanvas = gameCanvas;
 	this.levelJSON = levelJSON;
-	this.levelIntervals = [];
-	this.levelObjects = [];
+	this.intervals = [];
+	this.objects = [];
 
 	/** Clear all intervals associated with objects in this level. */
 	this.clear_intervals = function() {
-		for (var ii=0; ii<this.levelIntervals.length; ii++) {
-			clearInterval(this.levelIntervals[ii]);
-		}
+		this.intervals.forEach(function(interval){
+			clearInterval(interval);
+		});
 	}
 
 	/** Add a box object to the gameCanvas. */
-	this.add_box = function(xLeft, xRight, yBottom, yHeight, isFatal, isEndpoint) {
+	this.add_box = function (xLeft, xRight, yBottom, yHeight, isFatal, isEndpoint) {
 		var isFatal = isFatal || false;
 		var isEndpoint = isEndpoint || false;
 		var yTop = yBottom + yHeight;
@@ -349,60 +347,51 @@ function GameLevel(gameCanvas, levelJSON) {
 	}
 
 	/** Add a list of box objects from JSON to this level. */
-	this.add_boxes = function(boxArgs) {
+	this.add_boxes = function (boxArgs) {
 		var boxArgs = boxArgs || [];
-		for (var ii=0; ii<boxArgs.length; ii++) {
-			this.add_box(boxArgs[ii].xLeft,
-						 boxArgs[ii].xRight,
-						 boxArgs[ii].yBottom,
-						 boxArgs[ii].yHeight,
-						 boxArgs[ii].isFatal,
-						 boxArgs[ii].isEndpoint);
-		}
+		boxArgs.forEach(function (box){
+			thisLevel.add_box(box.xLeft, box.xRight, box.yBottom,
+						 	  box.yHeight, box.isFatal, box.isEndpoint);
+		});
 	}
 
 	/** Add a platform object to the gameCanvas. */
-	this.add_platform = function(xLeft, xRight, yBottom, isFatal, isEndpoint) {
+	this.add_platform = function (xLeft, xRight, yBottom, isFatal, isEndpoint) {
 		var isFatal = isFatal || false;
 		var isEndpoint = isEndpoint || false;
 		var newPlatform = new CanvasLine(this.gameCanvas, xLeft, yBottom, 
 									 	 xRight, yBottom, isFatal, isEndpoint);
-		this.levelObjects.push(newPlatform);
+		this.objects.push(newPlatform);
 		this.gameCanvas.platformAreas.push([xLeft, xRight, yBottom]);
 	}
 
 	/** Add a list of platform objects from JSON to this level. */
-	this.add_platforms = function(platformArgs) {
+	this.add_platforms = function (platformArgs) {
 		var platformArgs = platformArgs || [];
-		for (var ii=0; ii<platformArgs.length; ii++) {
-			this.add_platform(platformArgs[ii].xLeft,
-							  platformArgs[ii].xRight,
-							  platformArgs[ii].yBottom,
-							  platformArgs[ii].isFatal,
-							  platformArgs[ii].isEndpoint);
-		}
+		platformArgs.forEach(function (plat){
+			thisLevel.add_platform(plat.xLeft, plat.xRight, plat.yBottom, 
+								   plat.isFatal, plat.isEndpoint);
+		});
 	}
 
 	/** Add a wall object to the gameCanvas. */
-	this.add_wall = function(xPosition, yBottom, yHeight) {
+	this.add_wall = function (xPosition, yBottom, yHeight) {
 		var newWall = new CanvasLine(this.gameCanvas, xPosition, yBottom, 
 									 xPosition, yBottom+yHeight);
-		this.levelObjects.push(newWall);
+		this.objects.push(newWall);
 		this.gameCanvas.wallAreas.push([xPosition, yBottom, yHeight]);
 	}
 
 	/** Add a list of wall objects from JSON to this level. */
-	this.add_walls = function(wallArgs) {
+	this.add_walls = function (wallArgs) {
 		var wallArgs = wallArgs || [];
-		for (var ii=0; ii<wallArgs.length; ii++) {
-			this.add_wall(wallArgs[ii].xPosition,
-						  wallArgs[ii].yBottom,
-						  wallArgs[ii].yHeight);
-		}
+		wallArgs.forEach(function (wall){
+			thisLevel.add_wall(wall.xPosition, wall.yBottom, wall.yHeight);
+		});
 	}
 
 	/** Add a new character to this gameCanvas. */
-	this.add_npc = function(xPosition, yPosition) {
+	this.add_npc = function (xPosition, yPosition) {
 		var xPosition = xPosition || 0;
 		var yPosition = yPosition || 0;
 
@@ -414,12 +403,11 @@ function GameLevel(gameCanvas, levelJSON) {
 	}
 
 	/** Add a list of npc objects from JSON to this level. */
-	this.add_npcs = function(npcArgs) {
+	this.add_npcs = function (npcArgs) {
 		var npcArgs = npcArgs || [];
-		for (var ii=0; ii<npcArgs.length; ii++) {
-			this.add_npc(npcArgs[ii].xPosition,
-						 npcArgs[ii].yPosition);
-		}
+		npcArgs.forEach(function (npc){
+			thisLevel.add_npc(npc.xPosition, npc.yPosition);
+		});
 	}
 }
 
@@ -438,7 +426,7 @@ function CanvasLine(gameCanvas, xStart, yStart, xEnd, yEnd, isFatal, isEndpoint)
 	this.tickRate = 500;
 
 	/** Draw this line on the canvas. */
-	this.draw = function() {
+	this.draw = function () {
 		var yStartFixed = this.gameCanvas.groundOffset - this.yStart;
 		var yEndFixed = this.gameCanvas.groundOffset - this.yEnd;
 
@@ -453,7 +441,7 @@ function CanvasLine(gameCanvas, xStart, yStart, xEnd, yEnd, isFatal, isEndpoint)
 
 	if (this.isFatal) {
 		var level = this.gameCanvas.currentLevel;
-		level.levelIntervals.push(setInterval(function(){
+		level.intervals.push(setInterval(function(){
 			thisLine.tick_check_fatalities();
 		}, this.tickRate));
 	}
@@ -461,17 +449,16 @@ function CanvasLine(gameCanvas, xStart, yStart, xEnd, yEnd, isFatal, isEndpoint)
 	/** Check if each active character in the gameWorld is on this 
 		line, and if it is, kill and respawn it. */
 	this.tick_check_fatalities = function() {
-		var characters = this.gameCanvas.characterList;
-		for (var ii=0; ii<characters.length; ii++) {
-			if (characters[ii].is_on_line(this)) {
-				characters[ii].respawn();
+		this.gameCanvas.characterList.forEach(function(character){
+			if (character.is_on_line(thisLine)) {
+				character.respawn();
 			}
-		}
+		});
 	}
 
 	if (this.isEndpoint) {
 		var level = this.gameCanvas.currentLevel;
-		level.levelIntervals.push(setInterval(function(){
+		level.intervals.push(setInterval(function(){
 			thisLine.tick_check_endpoints();
 		}, this.tickRate));
 	}
@@ -479,12 +466,11 @@ function CanvasLine(gameCanvas, xStart, yStart, xEnd, yEnd, isFatal, isEndpoint)
 	/** Check if each active character in the gameWorld is on this 
 		line, and if it is, teleport it to the next level. */
 	this.tick_check_endpoints = function() {
-		var characters = this.gameCanvas.characterList;
-		for (var ii=0; ii<characters.length; ii++) {
-			if (characters[ii].is_on_line(this)) {
-				this.gameCanvas.load_next_level();
+		this.gameCanvas.characterList.forEach(function(character){
+			if (character.is_on_line(thisLine)) {
+				thisLine.gameCanvas.load_next_level();
 			}
-		}
+		});
 	}
 }
 
@@ -518,28 +504,28 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 	this.is_colliding = function() {
 		// Recalculate characters collision box based on direction
 		if (this.isFacingLeft) {
-			xCollisionLeft = this.xPosition - this.xCollisionRadius;
-			xCollisionRight = this.xPosition;
+			var xCollisionLeft = this.xPosition - this.xCollisionRadius;
+			var xCollisionRight = this.xPosition;
 		} else {
-			xCollisionLeft = this.xPosition;
-			xCollisionRight = this.xPosition + this.xCollisionRadius;
+			var xCollisionLeft = this.xPosition;
+			var xCollisionRight = this.xPosition + this.xCollisionRadius;
 		}
 
 		// Check every wall in the character"s game world
 		wallAreas = this.gameCanvas.wallAreas;
 		for (var ii=0; ii<wallAreas.length; ii++) {
-			wallArea = wallAreas[ii];
-			wallXPosition = wallArea[0];
-			wallBottomY = wallArea[1];
-			wallTopY = wallArea[1] + wallArea[2];
+			var area = wallAreas[ii];
+			var wallXPosition = area[0];
+			var wallBottomY = area[1];
+			var wallTopY = area[1] + area[2];
 
 			// Is this wall within the characters collision box?
 			// and is the character vertically within the walls
 			// top and bottom vertical position
 			if (xCollisionLeft <= wallXPosition
 					&& xCollisionRight >= wallXPosition
-					&& (this.yPosition + this.yCollisionHeight) >= wallBottomY
-					&& this.yPosition < wallTopY) {
+					&& (thisChar.yPosition + thisChar.yCollisionHeight) >= wallBottomY
+					&& thisChar.yPosition < wallTopY) {
 				return true;
 			}
 		}
@@ -612,25 +598,23 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 		floor so that it does not fall below it. */
 	this.find_yfloor = function() {
 		var newYFloor = 0;
-		var platformAreas = this.gameCanvas.platformAreas;
 
 		// Check every platform in the character"s game world
-		for (var ii=0; ii<platformAreas.length; ii++) {
-			var platformArea = platformAreas[ii];
-			var platformStartX = platformArea[0];
-			var platformEndX = platformArea[1];
-			var platformY = platformArea[2];
+		this.gameCanvas.platformAreas.forEach(function(area){
+			var platformStartX = area[0];
+			var platformEndX = area[1];
+			var platformY = area[2];
 
 			// Is this character above the current platform,
 			// within its horizontal boundaries, and is the platform
 			// above all other platforms the character above?
-			if (this.yPosition >= platformY
-					&& this.xPosition >= platformStartX
-					&& this.xPosition <= platformEndX
+			if (thisChar.yPosition >= platformY
+					&& thisChar.xPosition >= platformStartX
+					&& thisChar.xPosition <= platformEndX
 					&& platformY > newYFloor) {
 				newYFloor = platformY;
 			}
-		}
+		});
 
 		this.yFloor = newYFloor;
 	}
@@ -654,26 +638,24 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 		ceiling so that it cannot jump above it. */
 	this.find_yceiling = function() {
 		var newYCeiling = this.gameCanvas.canvasHeight;
-		var platformAreas = this.gameCanvas.platformAreas;
 
 		// Check every platform in the character"s game world
-		for (var ii = 0; ii < platformAreas.length; ii++) {
-			var platformArea = platformAreas[ii];
-			var platformStartX = platformArea[0];
-			var platformEndX = platformArea[1];
-			var platformY = platformArea[2];
+		this.gameCanvas.platformAreas.forEach(function(area){
+			var platformStartX = area[0];
+			var platformEndX = area[1];
+			var platformY = area[2];
 
 			// Is this character below the current platform,
 			// within its horizontal boundaries, and is the platform
 			// below all other platforms the character below?
-			if (this.yPosition <= platformY
-					&& this.xPosition >= platformStartX
-					&& this.xPosition <= platformEndX
+			if (thisChar.yPosition <= platformY
+					&& thisChar.xPosition >= platformStartX
+					&& thisChar.xPosition <= platformEndX
 					&& platformY < newYCeiling
-					&& platformY > this.yPosition) {
+					&& platformY > thisChar.yPosition) {
 				newYCeiling = platformY;
 			}
-		}
+		});
 
 		this.yCeiling = newYCeiling;
 	}
@@ -719,11 +701,10 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 	/** Load the images needed for this character to 
 		the parent gameCanvas. */
 	this.load_assets = function() {
-		for (var ii=0; ii<this.characterImages.length; ii++) {
-			var imageID = this.characterImages[ii].imageID;			
-			var imageLocation = this.characterImages[ii].imageLocation;
-			gameCanvas.load_image(imageID, imageLocation);
-		}
+		var gameCanvas = this.gameCanvas;
+		this.characterImages.forEach(function(image){
+			gameCanvas.load_image(image.imageID, image.imageLocation);
+		});
 	}
 
 	/** Draw a single frame of this character on the canvas. */
@@ -1069,88 +1050,6 @@ function KeyBindings(character) {
 }
 
 
-/** Represents a JSON database. */
-function Database() {
-	this.levelJSON = {
-		"level1": {
-			"name": "Level 1",
-			"xSpawn": 35,
-			"ySpawn": 200,
-			"boxes": [
-				{"xLeft": 0, "xRight": 700, "yBottom": 0, "yHeight": 200, }, 
-				{"xLeft": 800, "xRight": 900, "yBottom": 0, "yHeight": 200, "isEndpoint": true, },
-			],
-			"platforms": [
-				{"xLeft": 450, "xRight": 600, "yBottom": 400, },
-			],
-			"NPCs": [
-				{"xPosition": 500, "yPosition": 450, },
-			],
-		},
-		"level2": {
-			"name": "Level 2",
-			"xSpawn": 35,
-			"ySpawn": 200,
-			"boxes": [
-				{"xLeft": 0, "xRight": 200, "yBottom": 0, "yHeight": 200, }, 
-				{"xLeft": 300, "xRight": 700, "yBottom": 0, "yHeight": 200, },
-				{"xLeft": 800, "xRight": 900, "yBottom": 0, "yHeight": 200, "isEndpoint": true, },
-			],
-			"NPCs": [
-				{"xPosition": 350, "yPosition": 200, },
-			],
-		},
-		"level3": {
-			"name": "Level 3",
-			"xSpawn": 35,
-			"ySpawn": 50,
-			"boxes": [
-				{"xLeft": 0, "xRight": 350, "yBottom": 20, "yHeight": 30, }, 
-				{"xLeft": 400, "xRight": 550, "yBottom": 100, "yHeight": 30, },
-				{"xLeft": 600, "xRight": 750, "yBottom": 150, "yHeight": 30, }, 
-				{"xLeft": 800, "xRight": 950, "yBottom": 200, "yHeight": 30, "isEndpoint": true},
-			],
-		},
-		"level4": {
-			"name": "Level 4",
-			"xSpawn": 35,
-			"ySpawn": 400,
-			"boxes": [
-				{"xLeft": 0, "xRight": 350, "yBottom": 0, "yHeight": 400, },
-				{"xLeft": 800, "xRight": 950, "yBottom": 20, "yHeight": 30, "isEndpoint": true},
-			],
-		},
-		"level5": {
-			"name": "Level 5",
-			"xSpawn": 75,
-			"ySpawn": 125,
-			"boxes": [
-				{"xLeft": 300, "xRight": 500, "yBottom": 30, "yHeight": 30, }, 
-				{"xLeft": 600, "xRight": 700, "yBottom": 30, "yHeight": 60, },
-				{"xLeft": 800, "xRight": 900, "yBottom": 200, "yHeight": 30, "isEndpoint": true},
-			],
-			"platforms": [
-				{"xLeft": 20, "xRight": 250, "yBottom": 125, },
-				{"xLeft": 325, "xRight": 500, "yBottom": 185, },
-				{"xLeft": 20, "xRight": 250, "yBottom": 250, },
-				{"xLeft": 325, "xRight": 500, "yBottom": 325, },
-			],
-			"NPCs": [
-				{"xPosition": 100, "yPosition": 700, },
-				{"xPosition": 450, "yPosition": 200, },
-				{"xPosition": 650, "yPosition": 150, },
-			],
-		},
-	};
-
-	/** Return JSON data for the requested level. */
-	this.get_level = function(levelKey) {
-		return this.levelJSON[levelKey];
-	}
-}
-
-
-/** Main function executed on program load. */
 window.onload = function () {	
 	// Create a new game world with desired settings
 	var gameCanvas = new GameCanvas(width=900, height=600, groundLevel=50);
@@ -1160,11 +1059,10 @@ window.onload = function () {
 	gameCanvas.displayLevelName = true;
 	check_display_canvas();
 
-	// Add levels to the game world from JSON data
-	var database = new Database();
-	for (var level in database.levelJSON) {
-		gameCanvas.add_level(level, database.get_level(level));
-	}
-	gameCanvas.load_level("level1");
-	delete database;
+	// Add levels to the game world from levels.js
+	LEVELS.forEach(function (level) {
+		gameCanvas.add_level(level.name, level);
+	});
+
+	gameCanvas.load_level("Level 1");
 }
