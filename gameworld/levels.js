@@ -33,9 +33,9 @@ var LEVELS = [
         "ySpawn": 50,
         "boxes": [
             {"xLeft": 0, "xRight": 350, "yBottom": 20, "yHeight": 30, }, 
-            {"xLeft": 400, "xRight": 550, "yBottom": 100, "yHeight": 30, },
-            {"xLeft": 600, "xRight": 750, "yBottom": 150, "yHeight": 30, }, 
-            {"xLeft": 800, "xRight": 950, "yBottom": 200, "yHeight": 30, "isEndpoint": true},
+            {"xLeft": 400, "xRight": 550, "yBottom": 50, "yHeight": 30, },
+            {"xLeft": 600, "xRight": 750, "yBottom": 80, "yHeight": 30, }, 
+            {"xLeft": 800, "xRight": 950, "yBottom": 110, "yHeight": 30, "isEndpoint": true},
         ],
     },
     {
@@ -50,22 +50,22 @@ var LEVELS = [
     {
         "name": "Level 5",
         "xSpawn": 75,
-        "ySpawn": 125,
+        "ySpawn": 200,
         "boxes": [
-            {"xLeft": 300, "xRight": 500, "yBottom": 30, "yHeight": 30, }, 
-            {"xLeft": 600, "xRight": 700, "yBottom": 30, "yHeight": 60, },
-            {"xLeft": 800, "xRight": 900, "yBottom": 200, "yHeight": 30, "isEndpoint": true},
+            {"xLeft": 0, "xRight": 200, "yBottom": 0, "yHeight": 200, }, 
+            {"xLeft": 400, "xRight": 700, "yBottom": 20, "yHeight": 20, },
+            {"xLeft": 800, "xRight": 900, "yBottom": 220, "yHeight": 20, "isEndpoint": true},
         ],
         "platforms": [
-            {"xLeft": 20, "xRight": 250, "yBottom": 125, },
-            {"xLeft": 325, "xRight": 500, "yBottom": 185, },
-            {"xLeft": 20, "xRight": 250, "yBottom": 250, },
-            {"xLeft": 325, "xRight": 500, "yBottom": 325, },
+            {"xLeft": 180, "xRight": 380, "yBottom": 240, },
+            {"xLeft": 360, "xRight": 560, "yBottom": 280, },
+            {"xLeft": 180, "xRight": 380, "yBottom": 320, },
+            {"xLeft": 360, "xRight": 560, "yBottom": 360, },
         ],
         "NPCs": [
             {"xPosition": 100, "yPosition": 700, },
             {"xPosition": 450, "yPosition": 200, },
-            {"xPosition": 650, "yPosition": 150, },
+            {"xPosition": 600, "yPosition": 150, },
         ],
     }
 ];

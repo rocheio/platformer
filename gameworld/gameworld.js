@@ -39,35 +39,33 @@ Number.prototype.toHHMMSS = function () {
     return time;
 }
 
-/** Represents an HTML canvas on which a game is
-	being played. */
+/** Represents an HTML canvas on which a game is being played. */
 function GameCanvas(width, height, groundLevel) {
-	var thisCanvas = this;
+	var self = this;
 
-	// Canvas properties
 	this.canvas = document.createElement("canvas");
-	this.canvasWidth = width || 800;
+	this.canvasWidth = width;
 	MINIMUM_CANVAS_WIDTH = this.canvasWidth;
-	this.canvasHeight = height || 600;
+	this.canvasHeight = height;
 	MINIMUM_CANVAS_HEIGHT = this.canvasHeight;
+	this.groundLevel = groundLevel || 0;
+	this.groundOffset = this.canvasHeight - this.groundLevel;
 
-	/** Creates the working game canvas for any browser. */
-	this.prepare_canvas = function(canvasDiv) {
+	/** Creates a base game canvas and attaches it to the DOM. */
+	this.add_to_DOM = function(element) {
 		this.canvas.style.visibility = "hidden";
 		this.canvas.setAttribute("width", this.canvasWidth);
 		this.canvas.setAttribute("height", this.canvasHeight);
 		this.canvas.setAttribute("id", "canvas");
 		this.canvas.setAttribute("class", "canvas");
-		canvasDiv.appendChild(this.canvas);
+		element.appendChild(this.canvas);
 		
 		if (typeof G_vmlCanvasManager != "undefined") {
 			this.canvas = G_vmlCanvasManager.initElement(this.canvas);
 		}
-
 		this.context = document.getElementById("canvas").getContext("2d");
 	}
 
-	// Level properties
 	this.levelOrder = [];
 	this.levelDict = {};
 	this.currentLevelName = "";
@@ -81,28 +79,97 @@ function GameCanvas(width, height, groundLevel) {
 
 	/** Change the level to the next in sequence, or the
 		first if currently on the last level. */
-	this.load_next_level = function() {
-		this.reset_canvas();
+	this.complete_level = function() {
+		this.currentLevel.clear_intervals();
 
 		var levelName = this.currentLevelName;
 		var levelIndex = this.levelOrder.indexOf(levelName);
 
 		if (levelIndex+1 === this.levelOrder.length) {
-			this.reset_game_timer();
-			levelName = this.levelOrder[0];
+			this.win_game();
 		} else {
-			levelName = this.levelOrder[levelIndex+1];
+			var nextLevel = this.levelOrder[levelIndex+1];
+			this.change_level(nextLevel);
 		}
+	}
 
-		this.load_level(levelName);
+	/** Beat the final level, display a win screen, and 
+		restart the game. **/
+	this.win_game = function() {
+		clearInterval(this.timerInterval);
+		this.keyBindings.unbind_all();
+
+		this.partyInterval = setInterval(function(){
+			self.characters.forEach(function(character) {
+				character.attempt_jump();
+			});
+		}, 1000);
+
+		setTimeout(this.start_new_game.bind(this), 3800);
+	}
+
+	this.start_new_game = function() {
+		clearInterval(this.partyInterval);
+		this.change_level(this.levelOrder[0]);
+		this.add_timer();
+		this.reset_game_timer();
+	}
+
+	this.timePlayed = 0.0;
+	this.bestTime = 0.0;
+	this.displayCurrentTime = false;
+	this.displayBestTime = false;
+	
+	/** Add the timer to this canvas. */
+	this.add_timer = function() {
+		this.displayCurrentTime = true;
+		this.displayBestTime = true;
+
+		// Start interval to track frames per second
+		this.timerInterval = setInterval(this.update_timer.bind(this), 100);
+	}
+	
+	/** Update the timer for this game world. */
+	this.update_timer = function() {
+		if (!this.isPaused) {
+			this.timePlayed += 0.1;
+		}
+	}
+	
+	/** Reset the game timer and recalc the best time recorded. */
+	this.reset_game_timer = function() {
+		if (this.timePlayed < this.bestTime
+				|| this.bestTime == 0.0) {
+			this.bestTime = this.timePlayed;
+		}
+		this.timePlayed = 0.0;
+	}
+
+	/** Advance the game to the next level in sequence. **/
+	this.change_level = function(levelName) {
+		this.currentLevelName = levelName;
+		this.currentLevel = this.levelDict[levelName];
+		this.reset_level_assets();
+		this.load_level_assets();
+	}
+
+	// Playtime object arrays
+	this.platformAreas = [];
+	this.wallAreas = [];
+	this.characters = [];
+
+	/** Remove level assets from the gameWorld. */
+	this.reset_level_assets = function() {
+		this.currentLevel.objects.length = 0;
+		this.platformAreas.length = 0;
+		this.wallAreas.length = 0;
+		this.characters.length = 0;
 	}
 
 	/** Load current level settings to the canvas. */
-	this.load_level = function(levelName) {
-		this.currentLevelName = levelName;
-		this.currentLevel = this.levelDict[levelName];
-
+	this.load_level_assets = function() {
 		this.load_default_boundaries();
+
 		this.currentLevel.add_boxes(this.currentLevel.levelJSON["boxes"]);
 		this.currentLevel.add_platforms(this.currentLevel.levelJSON["platforms"]);
 		this.currentLevel.add_walls(this.currentLevel.levelJSON["walls"]);
@@ -112,14 +179,24 @@ function GameCanvas(width, height, groundLevel) {
 		this.spawn_player();
 	}
 
+	/** Add two walls and two platforms to the canvas
+		to form boundaries at the edges. */
+	this.load_default_boundaries = function() {
+		var level = this.currentLevel;
+		level.add_wall(0, 0, this.canvasHeight);
+		level.add_wall(this.canvasWidth, 0, this.canvasHeight);
+		level.add_platform(0, this.canvasWidth, this.canvasHeight);
+		level.add_platform(0, this.canvasWidth, 0, true);
+	}
+
 	this.images = {};
 
 	/** Load the images needed for this character to 
 		the parent gameCanvas. */
 	this.load_level_images = function() {
-		this.characterList.forEach(function(character){
+		this.characters.forEach(function(character){
 			character.images.forEach(function(image){
-				thisCanvas.load_image(image.imageID, image.imageLocation);
+				self.load_image(image.imageID, image.imageLocation);
 			});
 		});
 	}
@@ -144,7 +221,7 @@ function GameCanvas(width, height, groundLevel) {
 		this.numResourcesLoaded += 1;
 		if (this.numResourcesLoaded === this.startDrawingLimit) {
 			this.attemptDrawInterval = setInterval(function(){
-				thisCanvas.attempt_draw_frame();
+				self.attempt_draw_frame();
 			}, 1000/this.canvasFPS);
 		}
 	}
@@ -153,44 +230,23 @@ function GameCanvas(width, height, groundLevel) {
 	this.attempt_draw_frame = function() {
 		if (!this.isPaused) {
 			this.draw_canvas_frame();
-			thisCanvas.numFramesDrawn += 1;
+			this.framesDrawn += 1;
 		}
 	}
 
-	/** Add two walls and two platforms to the canvas
-		to form boundaries at the edges. */
-	this.load_default_boundaries = function() {
-		var level = this.currentLevel;
-		level.add_wall(0, 0, this.canvasHeight);
-		level.add_wall(this.canvasWidth, 0, this.canvasHeight);
-		level.add_platform(0, this.canvasWidth, this.canvasHeight);
-		level.add_platform(0, this.canvasWidth, 0, true);
-	}
+	this.keyBindings = {};
 
 	/** Spawn a new player character to the canvas. */
 	this.spawn_player = function() {
 		var xSpawn = this.currentLevel.levelJSON.xSpawn;
 		var ySpawn = this.currentLevel.levelJSON.ySpawn;
 		var player1 = this.currentLevel.add_npc(xSpawn, ySpawn);
-		var bindings = new KeyBindings(player1);
-		bindings.bind_defaults();
+		this.keyBindings = new KeyBindings(player1);
+		this.keyBindings.bind_defaults();
 	}
 
-	// Playtime object arrays
-	this.platformAreas = [];
-	this.wallAreas = [];
-	this.characterList = [];
-
-	/** Remove level assets from the gameWorld. */
-	this.reset_canvas = function() {
-		this.currentLevel.clear_intervals();
-		this.currentLevel.objects.length = 0;
-		this.platformAreas.length = 0;
-		this.wallAreas.length = 0;
-		this.characterList.length = 0;
-	}
-
-	/** Redraw all images on the canvas. */
+	/** Draw a single frame of the canvas using every
+		game element currently viewable. */
 	this.draw_canvas_frame = function() {
 		this.clear_canvas();
 		this.context.font = "12px sans-serif";
@@ -203,7 +259,7 @@ function GameCanvas(width, height, groundLevel) {
 			this.draw_current_time();
 		}
 
-		if (this.bestSecondsPlayed !== 0.0) {
+		if (this.bestTime !== 0.0) {
 			this.draw_best_time();
 		}
 
@@ -211,12 +267,12 @@ function GameCanvas(width, height, groundLevel) {
 			this.draw_level_name();
 		}
 
-		this.characterList.forEach(function(character) {
-			character.draw();
-		});
-
 		this.currentLevel.objects.forEach(function(object) {
 			object.draw();
+		});
+
+		this.characters.forEach(function(character) {
+			character.draw();
 		});
 	}
 
@@ -225,38 +281,34 @@ function GameCanvas(width, height, groundLevel) {
 		this.canvas.width = this.canvas.width;		
 	}
 
-	// Physics properties
-	this.groundLevel = groundLevel || 0;
-	this.groundOffset = this.canvasHeight - this.groundLevel;
-	this.numFramesDrawn = 0;
-
 	// Gravity properties
 	this.gravityRate = 15;
 	this.gravityAmount = 3;
 	this.gravityInterval = setInterval(function(){
-		thisCanvas.tick_gravity();
+		self.tick_gravity();
 	}, this.gravityRate);
 
 	/** Reduce each character's yPosition until it
 		reaches the ground or a solid object. */
 	this.tick_gravity = function() {
-		for (var ii=0; ii<this.characterList.length; ii++) {
-			var thisChar = this.characterList[ii];
+		for (var ii=0; ii<this.characters.length; ii++) {
+			var self = this.characters[ii];
 
-			if (!thisChar.is_at_yfloor()
-					&& !thisChar.isJumping) {
-				thisChar.yPosition -= this.gravityAmount;
+			if (!self.is_at_yfloor()
+					&& !self.isJumping) {
+				self.yPosition -= this.gravityAmount;
 
-				if (!thisChar.isAirborne) {
-					thisChar.start_falling();
+				if (!self.isAirborne) {
+					self.start_falling();
 				}
 			}
 		}
 	}
 
+	this.displayFPS = false;
 	this.canvasFPS = 30;
 	this.currentFPS = 0;
-	this.displayFPS = false;
+	this.framesDrawn = 0;
 	
 	/** Add the fps tracker to this canvas. */
 	this.add_fps = function() {
@@ -264,46 +316,14 @@ function GameCanvas(width, height, groundLevel) {
 
 		// Start interval to track frames per second
 		this.fpsInterval = setInterval(function(){
-			thisCanvas.update_fps();
+			self.update_fps();
 		}, 1000);
 	}
 	
 	/** Update the fps for this canvas. */
 	this.update_fps = function() {
-		this.currentFPS = this.numFramesDrawn;
-		this.numFramesDrawn = 0;
-	}
-
-	this.currentSecondsPlayed = 0.0;
-	this.bestSecondsPlayed = 0.0;
-	this.displayCurrentTime = false;
-	this.displayBestTime = false;
-	
-	/** Add the timer to this canvas. */
-	this.add_timer = function() {
-		this.displayCurrentTime = true;
-		this.displayBestTime = true;
-
-		// Start interval to track frames per second
-		this.timerInterval = setInterval(function(){
-			thisCanvas.update_timer();
-		}, 100);
-	}
-	
-	/** Update the timer for this game world. */
-	this.update_timer = function() {
-		if (!this.isPaused) {
-			this.currentSecondsPlayed += 0.1;
-		}
-	}
-	
-	/** Reset the game timer and recalc the best time recorded. */
-	this.reset_game_timer = function() {
-		if (this.currentSecondsPlayed < this.bestSecondsPlayed
-				|| this.bestSecondsPlayed == 0.0) {
-			this.bestSecondsPlayed = this.currentSecondsPlayed;
-		}
-		this.currentSecondsPlayed = 0.0;
+		this.currentFPS = this.framesDrawn;
+		this.framesDrawn = 0;
 	}
 
 	this.displayLevelName = false;
@@ -320,13 +340,13 @@ function GameCanvas(width, height, groundLevel) {
 	/** Create fps monitor in bottom left of screen */
 	this.draw_fps = function() {
 		fpsText = ("FPS: " + this.currentFPS + "/" + this.canvasFPS
-					+ " (" + this.numFramesDrawn + ")");
+					+ " (" + this.framesDrawn + ")");
 		this.context.fillText(fpsText, 3, this.canvasHeight-5);
 	}
 
 	/** Draw the current playtime of this character. */
 	this.draw_current_time = function() {
-		var timerText = this.currentSecondsPlayed.toHHMMSS();
+		var timerText = this.timePlayed.toHHMMSS();
 		var previousFont = this.context.font;
 		this.context.font = "bold 32px sans-serif";
 		this.context.textAlign = 'end';
@@ -337,7 +357,7 @@ function GameCanvas(width, height, groundLevel) {
 
 	/** Draw the best playtime of this character. */
 	this.draw_best_time = function() {
-		var timerText = "Best Time: " + this.bestSecondsPlayed.toHHMMSS();
+		var timerText = "Best Time: " + this.bestTime.toHHMMSS();
 		this.context.fillText(timerText, 100, this.canvasHeight-5);
 	}
 
@@ -353,7 +373,7 @@ function GameCanvas(width, height, groundLevel) {
 	this.unpause = function() {
 		this.isPaused = false;
 		this.gravityInterval = setInterval(function(){
-			thisCanvas.tick_gravity();
+			self.tick_gravity();
 		}, this.gravityRate);
 	}
 }
@@ -361,7 +381,7 @@ function GameCanvas(width, height, groundLevel) {
 
 /** Represents a level of the game. */
 function GameLevel(gameCanvas, levelJSON) {
-	var thisLevel = this;
+	var self = this;
 
 	this.gameCanvas = gameCanvas;
 	this.levelJSON = levelJSON;
@@ -391,8 +411,8 @@ function GameLevel(gameCanvas, levelJSON) {
 	this.add_boxes = function (boxArgs) {
 		var boxArgs = boxArgs || [];
 		boxArgs.forEach(function (box){
-			thisLevel.add_box(box.xLeft, box.xRight, box.yBottom,
-						 	  box.yHeight, box.isFatal, box.isEndpoint);
+			self.add_box(box.xLeft, box.xRight, box.yBottom,
+					 	 box.yHeight, box.isFatal, box.isEndpoint);
 		});
 	}
 
@@ -410,8 +430,8 @@ function GameLevel(gameCanvas, levelJSON) {
 	this.add_platforms = function (platformArgs) {
 		var platformArgs = platformArgs || [];
 		platformArgs.forEach(function (plat){
-			thisLevel.add_platform(plat.xLeft, plat.xRight, plat.yBottom, 
-								   plat.isFatal, plat.isEndpoint);
+			self.add_platform(plat.xLeft, plat.xRight, plat.yBottom, 
+							  plat.isFatal, plat.isEndpoint);
 		});
 	}
 
@@ -427,14 +447,14 @@ function GameLevel(gameCanvas, levelJSON) {
 	this.add_walls = function (wallArgs) {
 		var wallArgs = wallArgs || [];
 		wallArgs.forEach(function (wall){
-			thisLevel.add_wall(wall.xPosition, wall.yBottom, wall.yHeight);
+			self.add_wall(wall.xPosition, wall.yBottom, wall.yHeight);
 		});
 	}
 
 	/** Add a new character to this gameCanvas. */
 	this.add_npc = function (xPosition, yPosition) {
 		var newNPC = new GameCharacter(this.gameCanvas, xPosition, yPosition);
-		this.gameCanvas.characterList.push(newNPC);
+		this.gameCanvas.characters.push(newNPC);
 		return newNPC;
 	}
 
@@ -442,7 +462,7 @@ function GameLevel(gameCanvas, levelJSON) {
 	this.add_npcs = function (npcArgs) {
 		var npcArgs = npcArgs || [];
 		npcArgs.forEach(function (npc){
-			thisLevel.add_npc(npc.xPosition, npc.yPosition);
+			self.add_npc(npc.xPosition, npc.yPosition);
 		});
 	}
 }
@@ -450,7 +470,7 @@ function GameLevel(gameCanvas, levelJSON) {
 
 /** Represents a line on the game canvas. */
 function CanvasLine(gameCanvas, xStart, yStart, xEnd, yEnd, isFatal, isEndpoint) {
-	var thisLine = this;
+	var self = this;
 
 	this.gameCanvas = gameCanvas;
 	this.xStart = xStart;
@@ -478,15 +498,15 @@ function CanvasLine(gameCanvas, xStart, yStart, xEnd, yEnd, isFatal, isEndpoint)
 	if (this.isFatal) {
 		var level = this.gameCanvas.currentLevel;
 		level.intervals.push(setInterval(function(){
-			thisLine.tick_check_fatalities();
+			self.tick_check_fatalities();
 		}, this.tickRate));
 	}
 
 	/** Check if each active character in the gameWorld is on this 
 		line, and if it is, kill and respawn it. */
 	this.tick_check_fatalities = function() {
-		this.gameCanvas.characterList.forEach(function(character){
-			if (character.is_on_line(thisLine)) {
+		this.gameCanvas.characters.forEach(function(character){
+			if (character.is_on_line(self)) {
 				character.respawn();
 			}
 		});
@@ -495,16 +515,16 @@ function CanvasLine(gameCanvas, xStart, yStart, xEnd, yEnd, isFatal, isEndpoint)
 	if (this.isEndpoint) {
 		var level = this.gameCanvas.currentLevel;
 		level.intervals.push(setInterval(function(){
-			thisLine.tick_check_endpoints();
+			self.tick_check_endpoints();
 		}, this.tickRate));
 	}
 
 	/** Check if each active character in the gameWorld is on this 
 		line, and if it is, teleport it to the next level. */
 	this.tick_check_endpoints = function() {
-		this.gameCanvas.characterList.forEach(function(character){
-			if (character.is_on_line(thisLine)) {
-				thisLine.gameCanvas.load_next_level();
+		this.gameCanvas.characters.forEach(function (character){
+			if (character.is_on_line(self)) {
+				self.gameCanvas.complete_level();
 			}
 		});
 	}
@@ -513,7 +533,7 @@ function CanvasLine(gameCanvas, xStart, yStart, xEnd, yEnd, isFatal, isEndpoint)
 
 /** Represents an in-game character. */
 function GameCharacter(gameCanvas, xPosition, yPosition) {
-	var thisChar = this;
+	var self = this;
 
 	// Related objects
 	this.gameCanvas = gameCanvas;
@@ -554,14 +574,15 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 			var wallXPosition = area[0];
 			var wallBottomY = area[1];
 			var wallTopY = area[1] + area[2];
+			var yMax = self.yPosition + self.yCollisionHeight;
 
 			// Is this wall within the characters collision box?
 			// and is the character vertically within the walls
 			// top and bottom vertical position
 			if (xCollisionLeft <= wallXPosition
 					&& xCollisionRight >= wallXPosition
-					&& (thisChar.yPosition + thisChar.yCollisionHeight) >= wallBottomY
-					&& thisChar.yPosition < wallTopY) {
+					&& yMax >= wallBottomY
+					&& self.yPosition < wallTopY) {
 				return true;
 			}
 		}
@@ -570,7 +591,7 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 	}
 
 	/** Return true if this character is on a line. */
-	this.is_on_line = function(canvasLine) {
+	this.is_on_line = function (canvasLine) {
 		if (this.yPosition === canvasLine.yStart
 				&& this.xPosition >= canvasLine.xStart
 				&& this.xPosition <= canvasLine.xEnd) {
@@ -594,9 +615,9 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 			// Is this character above the current platform,
 			// within its horizontal boundaries, and is the platform
 			// above all other platforms the character above?
-			if (thisChar.yPosition >= platformY
-					&& thisChar.xPosition >= platformStartX
-					&& thisChar.xPosition <= platformEndX
+			if (self.yPosition >= platformY
+					&& self.xPosition >= platformStartX
+					&& self.xPosition <= platformEndX
 					&& platformY > newYFloor) {
 				newYFloor = platformY;
 			}
@@ -634,11 +655,11 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 			// Is this character below the current platform,
 			// within its horizontal boundaries, and is the platform
 			// below all other platforms the character below?
-			if (thisChar.yPosition <= platformY
-					&& thisChar.xPosition >= platformStartX
-					&& thisChar.xPosition <= platformEndX
+			if (self.yPosition <= platformY
+					&& self.xPosition >= platformStartX
+					&& self.xPosition <= platformEndX
 					&& platformY < newYCeiling
-					&& platformY > thisChar.yPosition) {
+					&& platformY > self.yPosition) {
 				newYCeiling = platformY;
 			}
 		});
@@ -660,10 +681,10 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 	/** Movement properties */
 	this.stepSize = 12;
 	this.stepsPerSecond = 30;
-	this.millisBeforeMovementStop = 100;
-	this.jumpHeight = 120;
-	this.runMultiplier = 2;
-	this.millisBeforeRunStop = 2000;
+	this.stopMovementDelay = 100;
+	this.jumpHeight = 50;
+	this.runMultiplier = 1.5;
+	this.stopRunningDelay = 500;
 
 	/** Breathing properties */
 	this.breathDirection = 1;
@@ -671,7 +692,7 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 	this.currentBreath = 0;
 	this.breathMax = 2;
 	this.breathInterval = setInterval(function(){
-		thisChar.update_breath();
+		self.update_breath();
 	}, 1000/this.gameCanvas.canvasFPS);
 
 	/** Blinking properties */
@@ -681,7 +702,7 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 	this.timeBtwBlinks = 4000;
 	this.blinkUpdateTime = 200;
 	this.blinkInterval = setInterval(function(){
-		thisChar.update_blink();
+		self.update_blink();
 	}, this.blinkUpdateTime);
 
 	// Default character images
@@ -724,7 +745,7 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
  		this.draw_shadow(xPosAdjusted);
 
  		imagesToDraw.forEach(function(image){
- 			thisChar.draw_image(image, xPosAdjusted, yPosAdjusted);
+ 			self.draw_image(image, xPosAdjusted, yPosAdjusted);
  		});
 
  		this.draw_eyes(xPosAdjusted, yPosAdjusted);
@@ -816,12 +837,12 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 
 	/** Make the character blink over a few frames. */
 	this.animate_blink = function() {
-		thisChar.curEyeHeight -= 1;
-		if (thisChar.curEyeHeight <= 0) {
-			thisChar.eyeOpenTime = 0;
-			thisChar.curEyeHeight = thisChar.maxEyeHeight;
+		this.curEyeHeight -= 1;
+		if (this.curEyeHeight <= 0) {
+			this.eyeOpenTime = 0;
+			this.curEyeHeight = this.maxEyeHeight;
 		} else {
-			thisChar.blinkTimeout = setTimeout(thisChar.animate_blink, 10);
+			this.blinkTimeout = setTimeout(this.animate_blink.bind(this), 10);
 		}
 	}
 
@@ -833,7 +854,7 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 			var jumpIncrement = this.jumpHeight / 12;
 			var maxHeight = this.yPosition + this.jumpHeight;
 			this.jumpUpInterval = setInterval(function(){
-				thisChar.ascend(maxHeight, jumpIncrement);
+				self.ascend(maxHeight, jumpIncrement);
 			}, this.gameCanvas.gravityRate);
 
 			this.start_falling();
@@ -842,11 +863,13 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 
 	/** Make the character ascend upward. */
 	this.ascend = function(maxHeight, jumpIncrement) {
-		if (thisChar.yPosition < maxHeight) {
-			thisChar.yPosition += jumpIncrement;
-		} else {
-			clearInterval(thisChar.jumpUpInterval);
-			thisChar.isJumping = false;
+		if (!this.gameCanvas.isPaused) {
+			if (this.yPosition < maxHeight) {
+				this.yPosition += jumpIncrement;
+			} else {
+				clearInterval(this.jumpUpInterval);
+				this.isJumping = false;
+			}
 		}
 	}
 
@@ -854,8 +877,8 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 	this.start_falling = function() {
 		this.isAirborne = true;
 		this.checkAirborneInterval = setInterval(function(){
-			if (thisChar.is_at_yfloor()) {
-				thisChar.end_hangtime();
+			if (self.is_at_yfloor()) {
+				self.end_hangtime();
 			}
 		}, 50);
 	}
@@ -863,16 +886,16 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 	/** Land after hanging in the air from
 		falling or jumping. */
 	this.end_hangtime = function() {
-		thisChar.isAirborne = false;
-		clearInterval(thisChar.checkAirborneInterval);
-		if (!thisChar.isPlanningMovement) {
-			thisChar.attempt_movement_stop();
+		self.isAirborne = false;
+		clearInterval(self.checkAirborneInterval);
+		if (!self.isPlanningMovement) {
+			self.attempt_movement_stop();
 		}
 	}
 
 	/** Make the character walk. */
 	this.start_walking = function() {
-    	clearTimeout(this.stopMovingTimeout);
+    	clearTimeout(this.stopTimeout);
 		if (!this.is_colliding()) {
 			this.step_forward();
 
@@ -881,8 +904,8 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 				clearInterval(this.stepInterval);
 
 				this.stepInterval = setInterval(function(){
-					if (!thisChar.is_colliding()) {
-						thisChar.step_forward();
+					if (!self.is_colliding()) {
+						self.step_forward();
 					}
 				}, 1000/this.stepsPerSecond);
 			}
@@ -907,15 +930,14 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 	this.start_running = function() {
 		if (!this.isRunning) {
 			this.isRunning = true;
-			this.runTimeout = setTimeout(thisChar.stop_running,
-										 thisChar.millisBeforeRunStop);
+			this.runTimeout = setTimeout(self.stop_running,
+										 self.stopRunningDelay);
 		}
 	}
 
 	/** Stop running. */
 	this.stop_running = function() {
-		thisChar.isRunning = false;
-		thisChar.attempt_movement_stop();
+		self.isRunning = false;
 	}
 
 	/** Attempt to stop all movement, unless further
@@ -924,12 +946,12 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 		this.isPlanningMovement = false;
 
 		// Allow time for new input to be entered
-		this.stopMovingTimeout = setTimeout(function(){
-			if (!this.isPlanningMovement
-					&& !thisChar.isAirborne) {
-				thisChar.stop_moving();
+		this.stopTimeout = setTimeout(function(){
+			if (!self.isPlanningMovement
+					&& !self.isAirborne) {
+				self.stop_moving();
 			}
-		}, this.millisBeforeMovementStop);
+		}, self.stopMovementDelay);
 	}
 
 	/** Stop all movement. */
@@ -1034,21 +1056,26 @@ function KeyBindings(character) {
 	    	}
 	    });
 	}
+
+	this.unbind_all = function() {
+		Mousetrap.unbind(["a", "left", "d", "right", "w", "up", "space",
+						  "s", "down", "q", "c", "z"]);
+	}
 }
 
 
 window.onload = function () {
-	var gameCanvas = new GameCanvas(width=900, height=600, groundLevel=38);
+	var game = new GameCanvas(width=900, height=600, groundLevel=38);
 
-	gameCanvas.prepare_canvas(document.getElementById("canvas-div"));
-	gameCanvas.add_fps();
-	gameCanvas.add_timer();
-	gameCanvas.displayLevelName = true;
+	game.add_to_DOM(document.getElementById("canvas-div"));
+	game.add_fps();
+	game.add_timer();
+	game.displayLevelName = true;
 	check_display_canvas();
 
 	LEVELS.forEach(function (level) {
-		gameCanvas.add_level(level.name, level);
+		game.add_level(level.name, level);
 	});
 
-	gameCanvas.load_level("Level 1");
+	game.change_level("Level 1");
 }
