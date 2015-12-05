@@ -93,6 +93,8 @@ function GameCanvas(width, height, groundLevel) {
 		}
 	}
 
+	this.partyInterval = {};
+
 	/** Beat the final level, display a win screen, and 
 		restart the game. **/
 	this.win_game = function() {
@@ -113,6 +115,13 @@ function GameCanvas(width, height, groundLevel) {
 		this.change_level(this.levelOrder[0]);
 		this.add_timer();
 		this.reset_game_timer();
+	}
+
+	this.reset_game = function() {
+		this.change_level(this.levelOrder[0]);
+		this.timePlayed = 0.0;
+		clearInterval(this.timerInterval);
+		this.add_timer();
 	}
 
 	this.timePlayed = 0.0;
@@ -1037,7 +1046,7 @@ function KeyBindings(character) {
 	    });
 
 	    // Bind key for running
-	    Mousetrap.bind("q", function() { 
+	    Mousetrap.bind(["q", "capslock"], function() { 
 	        character.start_running();
 	    });
 
@@ -1055,11 +1064,16 @@ function KeyBindings(character) {
 	    		canvas.pause();
 	    	}
 	    });
+
+	    // Bind key for restarting the game
+	    Mousetrap.bind("x", function() { 
+	        character.gameCanvas.reset_game();
+	    });
 	}
 
 	this.unbind_all = function() {
 		Mousetrap.unbind(["a", "left", "d", "right", "w", "up", "space",
-						  "s", "down", "q", "c", "z"]);
+						  "s", "down", "q", "c", "z", "x", "capslock"]);
 	}
 }
 
