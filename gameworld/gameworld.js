@@ -220,18 +220,17 @@ function GameCanvas(width, height, groundLevel) {
 		}
 	}
 
-	this.numResourcesLoaded = 0;
+	this.imagesLoaded = 0;
 	this.startDrawingLimit = 9;
 
 	/** Add resource to total number on page and draw_canvas_frame. 
 		Needs the gameCanvas as a parameter since it is called 
 		from an image element onload(). */
 	this.resource_loaded = function() {
-		this.numResourcesLoaded += 1;
-		if (this.numResourcesLoaded === this.startDrawingLimit) {
-			this.attemptDrawInterval = setInterval(function(){
-				self.attempt_draw_frame();
-			}, 1000/this.canvasFPS);
+		this.imagesLoaded += 1;
+		if (this.imagesLoaded === this.startDrawingLimit) {
+			this.drawInterval = setInterval(this.attempt_draw_frame.bind(this),
+											1000/this.canvasFPS);
 		}
 	}
 
@@ -300,18 +299,16 @@ function GameCanvas(width, height, groundLevel) {
 	/** Reduce each character's yPosition until it
 		reaches the ground or a solid object. */
 	this.tick_gravity = function() {
-		for (var ii=0; ii<this.characters.length; ii++) {
-			var self = this.characters[ii];
+		self.characters.forEach(function(character){
+			if (!character.is_at_yfloor()
+					&& !character.isJumping) {
+				character.yPosition -= self.gravityAmount;
 
-			if (!self.is_at_yfloor()
-					&& !self.isJumping) {
-				self.yPosition -= this.gravityAmount;
-
-				if (!self.isAirborne) {
-					self.start_falling();
+				if (!character.isAirborne) {
+					character.become_airborne();
 				}
 			}
-		}
+		});
 	}
 
 	this.displayFPS = false;
@@ -319,14 +316,10 @@ function GameCanvas(width, height, groundLevel) {
 	this.currentFPS = 0;
 	this.framesDrawn = 0;
 	
-	/** Add the fps tracker to this canvas. */
+	/** Start a tracker for average frames per second. */
 	this.add_fps = function() {
 		this.displayFPS = true;
-
-		// Start interval to track frames per second
-		this.fpsInterval = setInterval(function(){
-			self.update_fps();
-		}, 1000);
+		this.fpsInterval = setInterval(this.update_fps.bind(this), 1000);
 	}
 	
 	/** Update the fps for this canvas. */
@@ -381,9 +374,8 @@ function GameCanvas(width, height, groundLevel) {
 	/** Restore all motion on this GameCanvas. */
 	this.unpause = function() {
 		this.isPaused = false;
-		this.gravityInterval = setInterval(function(){
-			self.tick_gravity();
-		}, this.gravityRate);
+		this.gravityInterval = setInterval(this.tick_gravity.bind(this), 
+										   this.gravityRate);
 	}
 }
 
@@ -569,29 +561,17 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 	this.is_colliding = function() {
 		// Recalculate characters collision box based on direction
 		if (this.isFacingLeft) {
-			var xCollisionLeft = this.xPosition - this.xCollisionRadius;
-			var xCollisionRight = this.xPosition;
+			var xLeft = this.xPosition - this.xCollisionRadius;
+			var xRight = this.xPosition;
 		} else {
-			var xCollisionLeft = this.xPosition;
-			var xCollisionRight = this.xPosition + this.xCollisionRadius;
+			var xLeft = this.xPosition;
+			var xRight = this.xPosition + this.xCollisionRadius;
 		}
 
-		// Check every wall in the character"s game world
+		// Check every wall in the character's game world
 		wallAreas = this.gameCanvas.wallAreas;
 		for (var ii=0; ii<wallAreas.length; ii++) {
-			var area = wallAreas[ii];
-			var wallXPosition = area[0];
-			var wallBottomY = area[1];
-			var wallTopY = area[1] + area[2];
-			var yMax = self.yPosition + self.yCollisionHeight;
-
-			// Is this wall within the characters collision box?
-			// and is the character vertically within the walls
-			// top and bottom vertical position
-			if (xCollisionLeft <= wallXPosition
-					&& xCollisionRight >= wallXPosition
-					&& yMax >= wallBottomY
-					&& self.yPosition < wallTopY) {
+			if (this.check_wall_area(wallAreas[ii], xLeft, xRight)) {
 				return true;
 			}
 		}
@@ -599,11 +579,31 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 		return false;
 	}
 
-	/** Return true if this character is on a line. */
-	this.is_on_line = function (canvasLine) {
-		if (this.yPosition === canvasLine.yStart
-				&& this.xPosition >= canvasLine.xStart
-				&& this.xPosition <= canvasLine.xEnd) {
+	/** Return true if this wallArea is within character's collison
+		box, and within its top and bottom vertical position. */
+	this.check_wall_area = function (wallArea, charXLeft, charXRight) {
+		var wallX = wallArea[0];
+		var wallBottomY = wallArea[1];
+		var wallTopY = wallArea[1] + wallArea[2];
+		var yMax = this.yPosition + this.yCollisionHeight;
+
+		if (charXLeft <= wallX
+				&& charXRight >= wallX
+				&& yMax >= wallBottomY
+				&& this.yPosition < wallTopY) {
+			return true;
+		}
+	}
+
+	/** Return true if this character is on a platform
+		or would be the next time gravity ticks. */
+	this.is_at_yfloor = function() {
+		this.find_yfloor();
+
+		var nextYPosition = this.yPosition - this.gameCanvas.gravityAmount;
+
+		if (nextYPosition <= this.yFloor) {
+			this.yPosition = this.yFloor;
 			return true;
 		} else {
 			return false;
@@ -614,73 +614,37 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 		floor so that it does not fall below it. */
 	this.find_yfloor = function() {
 		var newYFloor = 0;
-
-		// Check every platform in the character"s game world
-		this.gameCanvas.platformAreas.forEach(function(area){
-			var platformStartX = area[0];
-			var platformEndX = area[1];
-			var platformY = area[2];
-
-			// Is this character above the current platform,
-			// within its horizontal boundaries, and is the platform
-			// above all other platforms the character above?
-			if (self.yPosition >= platformY
-					&& self.xPosition >= platformStartX
-					&& self.xPosition <= platformEndX
-					&& platformY > newYFloor) {
-				newYFloor = platformY;
+		this.gameCanvas.platformAreas.forEach(function (area){
+			if (self.check_floor_area(area, newYFloor)) {
+				newYFloor = area[2];
 			}
 		});
-
 		this.yFloor = newYFloor;
 	}
 
-	/** Return true if this character is on a platform
-		or would be the next time gravity ticks. */
-	this.is_at_yfloor = function() {
-		this.find_yfloor();
+	/** Return true if this floorArea is within character's horizontal
+		range, the character is above the platform, and the platform
+		is above the previous highest valid platform. */
+	this.check_floor_area = function (floorArea, newYFloor) {
+		var platformStartX = floorArea[0];
+		var platformEndX = floorArea[1];
+		var platformY = floorArea[2];
 
-		var nextYPosition = this.yPosition - this.gameCanvas.gravityAmount;
-		
-		if (nextYPosition <= this.yFloor) {
-			this.yPosition = this.yFloor;
+		if (this.yPosition >= platformY
+				&& this.xPosition >= platformStartX
+				&& this.xPosition <= platformEndX
+				&& platformY > newYFloor) {
 			return true;
-		} else {
-			return false;
 		}
+
+		return false;
 	}
 
-	/** Find the lowest object above the character and set its
-		ceiling so that it cannot jump above it. */
-	this.find_yceiling = function() {
-		var newYCeiling = this.gameCanvas.canvasHeight;
-
-		// Check every platform in the character"s game world
-		this.gameCanvas.platformAreas.forEach(function(area){
-			var platformStartX = area[0];
-			var platformEndX = area[1];
-			var platformY = area[2];
-
-			// Is this character below the current platform,
-			// within its horizontal boundaries, and is the platform
-			// below all other platforms the character below?
-			if (self.yPosition <= platformY
-					&& self.xPosition >= platformStartX
-					&& self.xPosition <= platformEndX
-					&& platformY < newYCeiling
-					&& platformY > self.yPosition) {
-				newYCeiling = platformY;
-			}
-		});
-
-		this.yCeiling = newYCeiling;
-	}
-
-	/** Return true if this character is directly below a platform. */
-	this.is_below_yceiling = function() {
-		this.find_yceiling();
-		var headLevel = this.yPosition + this.yCollisionHeight;
-		if (headLevel <= this.yCeiling) {
+	/** Return true if this character is on a line. */
+	this.is_on_line = function (canvasLine) {
+		if (this.yPosition === canvasLine.yStart
+				&& this.xPosition >= canvasLine.xStart
+				&& this.xPosition <= canvasLine.xEnd) {
 			return true;
 		} else {
 			return false;
@@ -859,14 +823,14 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 	this.attempt_jump = function() {
 		if (!this.isAirborne) {
 			this.isJumping = true;
-
-			var jumpIncrement = this.jumpHeight / 12;
 			var maxHeight = this.yPosition + this.jumpHeight;
+			var jumpIncrement = this.jumpHeight / 12;
+
 			this.jumpUpInterval = setInterval(function(){
 				self.ascend(maxHeight, jumpIncrement);
 			}, this.gameCanvas.gravityRate);
 
-			this.start_falling();
+			this.become_airborne();
 		}
 	}
 
@@ -882,56 +846,76 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 		}
 	}
 
-	/** Make the character fall. */
-	this.start_falling = function() {
+	/** Set the character to an airborne state so it falls
+		correctly and has the appropriate graphics. */
+	this.become_airborne = function() {
 		this.isAirborne = true;
-		this.checkAirborneInterval = setInterval(function(){
-			if (self.is_at_yfloor()) {
-				self.end_hangtime();
-			}
-		}, 50);
+		this.landInterval = setInterval(this.attempt_land.bind(this), 50);
 	}
 
-	/** Land after hanging in the air from
-		falling or jumping. */
-	this.end_hangtime = function() {
-		self.isAirborne = false;
-		clearInterval(self.checkAirborneInterval);
-		if (!self.isPlanningMovement) {
-			self.attempt_movement_stop();
+	/** Land after hanging in the air from falling or jumping. */
+	this.attempt_land = function() {
+		if (this.is_at_yfloor()) {
+			this.isAirborne = false;
+			clearInterval(this.landInterval);
+			if (!this.isPlanningMovement) {
+				this.begin_movement_stop();
+			}
 		}
 	}
 
-	/** Make the character walk. */
-	this.start_walking = function() {
-    	clearTimeout(this.stopTimeout);
-		if (!this.is_colliding()) {
-			this.step_forward();
+	/** Attempt to stop all movement, unless further
+		user input is received. */
+	this.begin_movement_stop = function() {
+		this.isPlanningMovement = false;
 
-			// Reset the step interval
+		// Allow time for new input to be entered
+		this.stopMoveTimeout = setTimeout(this.attempt_stop.bind(this), 
+										  this.stopMovementDelay);
+	}
+
+	/** Stop movement of this character unless it plans further moves. */
+	this.attempt_stop = function() {
+		if (!this.isPlanningMovement 
+				&& !this.isAirborne) {
+			this.stop_moving();
+		}
+	}
+
+	/** Stop all movement. */
+	this.stop_moving = function() {
+		clearInterval(this.stepInterval);
+		this.isWalking = false;
+		this.isRunning = false;
+	}
+
+	/** Make the character walk forward until given a stop command. */
+	this.start_walking = function() {
+    	clearTimeout(this.stopMoveTimeout);
+		if (!this.is_colliding()) {
+			this.attempt_step();
 			if (this.isWalking) {
 				clearInterval(this.stepInterval);
-
-				this.stepInterval = setInterval(function(){
-					if (!self.is_colliding()) {
-						self.step_forward();
-					}
-				}, 1000/this.stepsPerSecond);
+				this.stepInterval = setInterval(this.attempt_step.bind(this), 
+												1000/this.stepsPerSecond);
 			}
 		}
 	}
 
-	/** Step in the directino the character is facing. */
-	this.step_forward = function() {
-		var stepAmount = this.stepSize;
-		if (this.isFacingLeft) {
-			stepAmount *= -1;
-		}
-		if (this.isRunning) {
-			stepAmount *= this.runMultiplier;
-		}
-		if (!this.gameCanvas.isPaused) {
-			this.xPosition += stepAmount;
+	/** If not colliding with an object, step in the direction 
+		the character is facing. */
+	this.attempt_step = function() {
+		if (!this.is_colliding()) {
+			var stepAmount = this.stepSize;
+			if (this.isFacingLeft) {
+				stepAmount *= -1;
+			}
+			if (this.isRunning) {
+				stepAmount *= this.runMultiplier;
+			}
+			if (!this.gameCanvas.isPaused) {
+				this.xPosition += stepAmount;
+			}
 		}
 	}
 
@@ -939,34 +923,13 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 	this.start_running = function() {
 		if (!this.isRunning) {
 			this.isRunning = true;
-			this.runTimeout = setTimeout(self.stop_running,
-										 self.stopRunningDelay);
+			this.runTimeout = setTimeout(this.stop_running.bind(this),
+										 this.stopRunningDelay);
 		}
 	}
 
 	/** Stop running. */
 	this.stop_running = function() {
-		self.isRunning = false;
-	}
-
-	/** Attempt to stop all movement, unless further
-		user input is received. */
-	this.attempt_movement_stop = function() {
-		this.isPlanningMovement = false;
-
-		// Allow time for new input to be entered
-		this.stopTimeout = setTimeout(function(){
-			if (!self.isPlanningMovement
-					&& !self.isAirborne) {
-				self.stop_moving();
-			}
-		}, self.stopMovementDelay);
-	}
-
-	/** Stop all movement. */
-	this.stop_moving = function() {
-		clearInterval(this.stepInterval);
-		this.isWalking = false;
 		this.isRunning = false;
 	}
 
@@ -1002,7 +965,7 @@ function KeyBindings(character) {
 	    });
 	    Mousetrap.bind(["a", "left"], function() {
 			if (character.isFacingLeft) {
-				character.attempt_movement_stop();
+				character.begin_movement_stop();
 			}
 	        //console.log("left_up");
 	    }, "keyup");
@@ -1017,7 +980,7 @@ function KeyBindings(character) {
 	    });
 	    Mousetrap.bind(["d", "right"], function() {
 			if (!character.isFacingLeft) {
-				character.attempt_movement_stop();
+				character.begin_movement_stop();
 			}
 	        //console.log("right_up");
 	    }, "keyup");
