@@ -4,11 +4,11 @@ var LEVELS = [
         "xSpawn": 35,
         "ySpawn": 200,
         "boxes": [
-            {"xLeft": 0, "xRight": 700, "yBottom": 0, "yHeight": 200, }, 
-            {"xLeft": 800, "xRight": 900, "yBottom": 0, "yHeight": 200, "isEndpoint": true, },
+            {"xMin": 0, "xMax": 700, "yMin": 0, "yMax": 200, }, 
+            {"xMin": 800, "xMax": 900, "yMin": 0, "yMax": 200, "isEndpoint": true, },
         ],
-        "platforms": [
-            {"xLeft": 450, "xRight": 600, "yBottom": 400, },
+        "lines": [
+            {"xMin": 450, "xMax": 600, "yMin": 400, "yMax": 400, },
         ],
         "NPCs": [
             {"xPosition": 500, "yPosition": 450, },
@@ -19,9 +19,9 @@ var LEVELS = [
         "xSpawn": 35,
         "ySpawn": 200,
         "boxes": [
-            {"xLeft": 0, "xRight": 200, "yBottom": 0, "yHeight": 200, }, 
-            {"xLeft": 300, "xRight": 700, "yBottom": 0, "yHeight": 200, },
-            {"xLeft": 800, "xRight": 900, "yBottom": 0, "yHeight": 200, "isEndpoint": true, },
+            {"xMin": 0, "xMax": 200, "yMin": 0, "yMax": 200, }, 
+            {"xMin": 300, "xMax": 700, "yMin": 0, "yMax": 200, },
+            {"xMin": 800, "xMax": 900, "yMin": 0, "yMax": 200, "isEndpoint": true, },
         ],
         "NPCs": [
             {"xPosition": 350, "yPosition": 200, },
@@ -32,10 +32,10 @@ var LEVELS = [
         "xSpawn": 35,
         "ySpawn": 50,
         "boxes": [
-            {"xLeft": 0, "xRight": 350, "yBottom": 20, "yHeight": 30, }, 
-            {"xLeft": 400, "xRight": 550, "yBottom": 50, "yHeight": 30, },
-            {"xLeft": 600, "xRight": 750, "yBottom": 80, "yHeight": 30, }, 
-            {"xLeft": 800, "xRight": 950, "yBottom": 110, "yHeight": 30, "isEndpoint": true},
+            {"xMin": 0, "xMax": 350, "yMin": 20, "yMax": 50, }, 
+            {"xMin": 400, "xMax": 550, "yMin": 50, "yMax": 80, },
+            {"xMin": 600, "xMax": 750, "yMin": 80, "yMax": 110, }, 
+            {"xMin": 800, "xMax": 950, "yMin": 110, "yMax": 140, "isEndpoint": true},
         ],
     },
     {
@@ -43,8 +43,8 @@ var LEVELS = [
         "xSpawn": 35,
         "ySpawn": 400,
         "boxes": [
-            {"xLeft": 0, "xRight": 350, "yBottom": 0, "yHeight": 400, },
-            {"xLeft": 800, "xRight": 950, "yBottom": 20, "yHeight": 30, "isEndpoint": true},
+            {"xMin": 0, "xMax": 350, "yMin": 0, "yMax": 400, },
+            {"xMin": 800, "xMax": 950, "yMin": 20, "yMax": 50, "isEndpoint": true},
         ],
     },
     {
@@ -52,15 +52,15 @@ var LEVELS = [
         "xSpawn": 75,
         "ySpawn": 200,
         "boxes": [
-            {"xLeft": 0, "xRight": 200, "yBottom": 0, "yHeight": 200, }, 
-            {"xLeft": 400, "xRight": 700, "yBottom": 20, "yHeight": 20, },
-            {"xLeft": 800, "xRight": 900, "yBottom": 220, "yHeight": 20, "isEndpoint": true},
+            {"xMin": 0, "xMax": 200, "yMin": 0, "yMax": 200, }, 
+            {"xMin": 400, "xMax": 700, "yMin": 20, "yMax": 40, },
+            {"xMin": 800, "xMax": 900, "yMin": 220, "yMax": 240, "isEndpoint": true},
         ],
-        "platforms": [
-            {"xLeft": 180, "xRight": 380, "yBottom": 240, },
-            {"xLeft": 360, "xRight": 560, "yBottom": 280, },
-            {"xLeft": 180, "xRight": 380, "yBottom": 320, },
-            {"xLeft": 360, "xRight": 560, "yBottom": 360, },
+        "lines": [
+            {"xMin": 180, "xMax": 380, "yMin": 240, "yMax": 240, },
+            {"xMin": 360, "xMax": 560, "yMin": 280, "yMax": 280, },
+            {"xMin": 180, "xMax": 380, "yMin": 320, "yMax": 320, },
+            {"xMin": 360, "xMax": 560, "yMin": 360, "yMax": 360, },
         ],
         "NPCs": [
             {"xPosition": 100, "yPosition": 700, },

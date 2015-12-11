@@ -18,7 +18,7 @@ function check_display_canvas() {
 }
 
 /** Adding HH:MM:SS formatting method to Numbers **/
-Number.prototype.toHHMMSS = function () {
+Number.prototype.toHHMMSS = function(){
     var hours = Math.floor(this / 3600);
     var minutes = Math.floor(this % 3600 / 60);
     var seconds = (this % 3600 % 60).toFixed(1);
@@ -43,6 +43,21 @@ Number.prototype.toHHMMSS = function () {
 function GameCanvas(width, height, groundLevel) {
 	var self = this;
 
+	/** Prepare the canvas for play and start the game. */
+	this.start = function(){
+		this.add_to_DOM(document.getElementById("canvas-div"));
+		this.add_fps();
+		this.add_timer();
+		this.displayLevelName = true;
+		check_display_canvas();
+
+		LEVELS.forEach(function (level) {
+			self.add_level(level.name, level);
+		});
+
+		this.change_level(this.levelOrder[0]);
+	}
+
 	this.canvas = document.createElement("canvas");
 	this.canvasWidth = width;
 	MINIMUM_CANVAS_WIDTH = this.canvasWidth;
@@ -52,7 +67,7 @@ function GameCanvas(width, height, groundLevel) {
 	this.groundOffset = this.canvasHeight - this.groundLevel;
 
 	/** Creates a base game canvas and attaches it to the DOM. */
-	this.add_to_DOM = function(element) {
+	this.add_to_DOM = function (element) {
 		this.canvas.style.visibility = "hidden";
 		this.canvas.setAttribute("width", this.canvasWidth);
 		this.canvas.setAttribute("height", this.canvasHeight);
@@ -71,7 +86,7 @@ function GameCanvas(width, height, groundLevel) {
 	this.currentLevelName = "";
 
 	/** Add a new level to this gameCanvas. */
-	this.add_level = function(levelName, levelJSON) {
+	this.add_level = function (levelName, levelJSON) {
 		var newLevel = new GameLevel(this, levelJSON);
 		this.levelOrder.push(levelName);
 		this.levelDict[levelName] = newLevel;
@@ -79,7 +94,7 @@ function GameCanvas(width, height, groundLevel) {
 
 	/** Change the level to the next in sequence, or the
 		first if currently on the last level. */
-	this.complete_level = function() {
+	this.complete_level = function(){
 		this.currentLevel.clear_intervals();
 
 		var levelName = this.currentLevelName;
@@ -97,12 +112,12 @@ function GameCanvas(width, height, groundLevel) {
 
 	/** Beat the final level, display a win screen, and 
 		restart the game. **/
-	this.win_game = function() {
+	this.win_game = function(){
 		clearInterval(this.timerInterval);
 		this.keyBindings.unbind_all();
 
 		this.partyInterval = setInterval(function(){
-			self.characters.forEach(function(character) {
+			self.characters.forEach(function (character) {
 				character.attempt_jump();
 			});
 		}, 1000);
@@ -110,14 +125,14 @@ function GameCanvas(width, height, groundLevel) {
 		setTimeout(this.start_new_game.bind(this), 3800);
 	}
 
-	this.start_new_game = function() {
+	this.start_new_game = function(){
 		clearInterval(this.partyInterval);
 		this.change_level(this.levelOrder[0]);
 		this.add_timer();
 		this.reset_game_timer();
 	}
 
-	this.reset_game = function() {
+	this.reset_game = function(){
 		this.change_level(this.levelOrder[0]);
 		this.timePlayed = 0.0;
 		clearInterval(this.timerInterval);
@@ -126,85 +141,63 @@ function GameCanvas(width, height, groundLevel) {
 
 	this.timePlayed = 0.0;
 	this.bestTime = 0.0;
-	this.displayCurrentTime = false;
-	this.displayBestTime = false;
 	
 	/** Add the timer to this canvas. */
-	this.add_timer = function() {
+	this.add_timer = function(){
 		this.displayCurrentTime = true;
-		this.displayBestTime = true;
 
 		// Start interval to track frames per second
 		this.timerInterval = setInterval(this.update_timer.bind(this), 100);
 	}
 	
 	/** Update the timer for this game world. */
-	this.update_timer = function() {
+	this.update_timer = function(){
 		if (!this.isPaused) {
 			this.timePlayed += 0.1;
 		}
 	}
 	
 	/** Reset the game timer and recalc the best time recorded. */
-	this.reset_game_timer = function() {
+	this.reset_game_timer = function(){
 		if (this.timePlayed < this.bestTime
 				|| this.bestTime == 0.0) {
 			this.bestTime = this.timePlayed;
+			this.displayBestTime = true;
 		}
 		this.timePlayed = 0.0;
 	}
 
 	/** Advance the game to the next level in sequence. **/
-	this.change_level = function(levelName) {
+	this.change_level = function (levelName) {
 		this.currentLevelName = levelName;
 		this.currentLevel = this.levelDict[levelName];
-		this.reset_level_assets();
-		this.load_level_assets();
+
+		this.reset_canvas_assets();
+		this.currentLevel.load_borders(this.canvasWidth, this.canvasHeight);
+		this.currentLevel.load_JSON();
+
+		this.load_level_images();
+		this.spawn_player();
 	}
 
 	// Playtime object arrays
 	this.platformAreas = [];
 	this.wallAreas = [];
 	this.characters = [];
+	this.images = {};
 
-	/** Remove level assets from the gameWorld. */
-	this.reset_level_assets = function() {
-		this.currentLevel.objects.length = 0;
+	/** Remove all assets from the game canvas. */
+	this.reset_canvas_assets = function(){
 		this.platformAreas.length = 0;
 		this.wallAreas.length = 0;
 		this.characters.length = 0;
 	}
 
-	/** Load current level settings to the canvas. */
-	this.load_level_assets = function() {
-		this.load_default_boundaries();
-
-		this.currentLevel.add_boxes(this.currentLevel.levelJSON["boxes"]);
-		this.currentLevel.add_platforms(this.currentLevel.levelJSON["platforms"]);
-		this.currentLevel.add_walls(this.currentLevel.levelJSON["walls"]);
-		this.currentLevel.add_npcs(this.currentLevel.levelJSON["NPCs"]);
-
-		this.load_level_images();
-		this.spawn_player();
-	}
-
-	/** Add two walls and two platforms to the canvas
-		to form boundaries at the edges. */
-	this.load_default_boundaries = function() {
-		var level = this.currentLevel;
-		level.add_wall(0, 0, this.canvasHeight);
-		level.add_wall(this.canvasWidth, 0, this.canvasHeight);
-		level.add_platform(0, this.canvasWidth, this.canvasHeight);
-		level.add_platform(0, this.canvasWidth, 0, true);
-	}
-
-	this.images = {};
-
 	/** Load the images needed for this character to 
 		the parent gameCanvas. */
-	this.load_level_images = function() {
-		this.characters.forEach(function(character){
-			character.images.forEach(function(image){
+	this.load_level_images = function(){
+		this.characters.forEach(function (character) {
+			character.images.forEach(function (image) {
 				self.load_image(image.imageID, image.imageLocation);
 			});
 		});
@@ -212,7 +205,7 @@ function GameCanvas(width, height, groundLevel) {
 
 	/** Load an image to HTML from the /images/ folder. 
 		Begin the animations for that image. */
-	this.load_image = function(name, location) {
+	this.load_image = function (name, location) {
 		if (!(name in this.images)) {
 			this.images[name] = new Image();
 			this.images[name].onload = this.resource_loaded();
@@ -226,7 +219,7 @@ function GameCanvas(width, height, groundLevel) {
 	/** Add resource to total number on page and draw_canvas_frame. 
 		Needs the gameCanvas as a parameter since it is called 
 		from an image element onload(). */
-	this.resource_loaded = function() {
+	this.resource_loaded = function(){
 		this.imagesLoaded += 1;
 		if (this.imagesLoaded === this.startDrawingLimit) {
 			this.drawInterval = setInterval(this.attempt_draw_frame.bind(this),
@@ -235,58 +228,121 @@ function GameCanvas(width, height, groundLevel) {
 	}
 
 	/** Attempt to draw the next frame of the canvas. */
-	this.attempt_draw_frame = function() {
+	this.attempt_draw_frame = function(){
 		if (!this.isPaused) {
 			this.draw_canvas_frame();
 			this.framesDrawn += 1;
 		}
 	}
 
+	/** Draw a single frame of the canvas using every
+		game element currently viewable. */
+	this.draw_canvas_frame = function(){
+		this.clear_canvas();
+
+		this.currentLevel.objects.forEach(function (object) {
+			object.draw();
+		});
+
+		this.characters.forEach(function (character) {
+			character.draw();
+		});
+
+		this.draw_ui();
+	}
+
+	/** Clear the canvas before drawing another frame. */
+	this.clear_canvas = function(){
+		this.canvas.width = this.canvas.width;		
+	}
+
+	this.displayLevelName = false;
+	this.displayFPS = false;
+	this.displayCurrentTime = false;
+	this.displayBestTime = false;
+
+	/** Draw informational elements on the canvas. */
+	this.draw_ui = function(){
+		this.context.font = "12px sans-serif";
+		if (this.displayLevelName) { this.draw_level_name(); }
+		if (this.displayFPS) { this.draw_fps(); }
+		if (this.displayCurrentTime) { this.draw_current_time(); }
+		if (this.displayBestTime) { this.draw_best_time(); }
+	}
+
+	this.canvasFPS = 30;
+	this.currentFPS = 0;
+	this.framesDrawn = 0;
+	
+	/** Start a tracker for average frames per second. */
+	this.add_fps = function(){
+		this.displayFPS = true;
+		this.fpsInterval = setInterval(this.update_fps.bind(this), 1000);
+	}
+	
+	/** Update the fps for this canvas. */
+	this.update_fps = function(){
+		this.currentFPS = this.framesDrawn;
+		this.framesDrawn = 0;
+	}
+
+	/** Create fps monitor in bottom left of screen */
+	this.draw_fps = function(){
+		fpsText = ("FPS: " + this.currentFPS + "/" + this.canvasFPS
+					+ " (" + this.framesDrawn + ")");
+		this.context.fillText(fpsText, 3, this.canvasHeight-5);
+	}
+
+	/** Draw level name in top left of window. */
+	this.draw_level_name = function(){
+		var levelName = this.currentLevel.levelJSON['name'];
+		var previousFont = this.context.font;
+		this.context.font = "bold 16px sans-serif";
+		this.context.fillText(levelName, 3, this.canvasHeight-20);
+		this.context.font = previousFont;
+	}
+
+	/** Draw the current playtime of this character. */
+	this.draw_current_time = function(){
+		var timerText = this.timePlayed.toHHMMSS();
+		var previousFont = this.context.font;
+		this.context.font = "bold 32px sans-serif";
+		this.context.textAlign = 'end';
+		this.context.fillText(timerText, this.canvasWidth-10, 30);
+		this.context.font = previousFont;
+		this.context.textAlign = 'start';
+	}
+
+	/** Draw the best playtime of this character. */
+	this.draw_best_time = function(){
+		var timerText = "Best Time: " + this.bestTime.toHHMMSS();
+		this.context.fillText(timerText, 100, this.canvasHeight-5);
+	}
+
+	this.isPaused = false;
+	
+	/** Pause all motion on this GameCanvas. */
+	this.pause = function(){
+		this.isPaused = true;
+		clearInterval(this.gravityInterval);
+	}
+	
+	/** Restore all motion on this GameCanvas. */
+	this.unpause = function(){
+		this.isPaused = false;
+		this.gravityInterval = setInterval(this.tick_gravity.bind(this), 
+										   this.gravityRate);
+	}
+
 	this.keyBindings = {};
 
 	/** Spawn a new player character to the canvas. */
-	this.spawn_player = function() {
+	this.spawn_player = function(){
 		var xSpawn = this.currentLevel.levelJSON.xSpawn;
 		var ySpawn = this.currentLevel.levelJSON.ySpawn;
 		var player1 = this.currentLevel.add_npc(xSpawn, ySpawn);
 		this.keyBindings = new KeyBindings(player1);
 		this.keyBindings.bind_defaults();
-	}
-
-	/** Draw a single frame of the canvas using every
-		game element currently viewable. */
-	this.draw_canvas_frame = function() {
-		this.clear_canvas();
-		this.context.font = "12px sans-serif";
-
-		if (this.displayFPS) {
-			this.draw_fps();
-		}
-
-		if (this.displayCurrentTime) {
-			this.draw_current_time();
-		}
-
-		if (this.bestTime !== 0.0) {
-			this.draw_best_time();
-		}
-
-		if (this.displayLevelName) {
-			this.draw_level_name();
-		}
-
-		this.currentLevel.objects.forEach(function(object) {
-			object.draw();
-		});
-
-		this.characters.forEach(function(character) {
-			character.draw();
-		});
-	}
-
-	/** Clear the canvas before drawing another frame. */
-	this.clear_canvas = function() {
-		this.canvas.width = this.canvas.width;		
 	}
 
 	// Gravity properties
@@ -298,8 +354,8 @@ function GameCanvas(width, height, groundLevel) {
 
 	/** Reduce each character's yPosition until it
 		reaches the ground or a solid object. */
-	this.tick_gravity = function() {
-		self.characters.forEach(function(character){
+	this.tick_gravity = function(){
+		self.characters.forEach(function (character) {
 			if (!character.is_at_yfloor()
 					&& !character.isJumping) {
 				character.yPosition -= self.gravityAmount;
@@ -310,78 +366,11 @@ function GameCanvas(width, height, groundLevel) {
 			}
 		});
 	}
-
-	this.displayFPS = false;
-	this.canvasFPS = 30;
-	this.currentFPS = 0;
-	this.framesDrawn = 0;
-	
-	/** Start a tracker for average frames per second. */
-	this.add_fps = function() {
-		this.displayFPS = true;
-		this.fpsInterval = setInterval(this.update_fps.bind(this), 1000);
-	}
-	
-	/** Update the fps for this canvas. */
-	this.update_fps = function() {
-		this.currentFPS = this.framesDrawn;
-		this.framesDrawn = 0;
-	}
-
-	this.displayLevelName = false;
-
-	/** Draw level name in top left of window. */
-	this.draw_level_name = function() {
-		var levelName = this.currentLevel.levelJSON['name'];
-		var previousFont = this.context.font;
-		this.context.font = "bold 16px sans-serif";
-		this.context.fillText(levelName, 3, this.canvasHeight-20);
-		this.context.font = previousFont;
-	}
-
-	/** Create fps monitor in bottom left of screen */
-	this.draw_fps = function() {
-		fpsText = ("FPS: " + this.currentFPS + "/" + this.canvasFPS
-					+ " (" + this.framesDrawn + ")");
-		this.context.fillText(fpsText, 3, this.canvasHeight-5);
-	}
-
-	/** Draw the current playtime of this character. */
-	this.draw_current_time = function() {
-		var timerText = this.timePlayed.toHHMMSS();
-		var previousFont = this.context.font;
-		this.context.font = "bold 32px sans-serif";
-		this.context.textAlign = 'end';
-		this.context.fillText(timerText, this.canvasWidth-10, 30);
-		this.context.font = previousFont;
-		this.context.textAlign = 'start';
-	}
-
-	/** Draw the best playtime of this character. */
-	this.draw_best_time = function() {
-		var timerText = "Best Time: " + this.bestTime.toHHMMSS();
-		this.context.fillText(timerText, 100, this.canvasHeight-5);
-	}
-
-	this.isPaused = false;
-	
-	/** Pause all motion on this GameCanvas. */
-	this.pause = function() {
-		this.isPaused = true;
-		clearInterval(this.gravityInterval);
-	}
-	
-	/** Restore all motion on this GameCanvas. */
-	this.unpause = function() {
-		this.isPaused = false;
-		this.gravityInterval = setInterval(this.tick_gravity.bind(this), 
-										   this.gravityRate);
-	}
 }
 
 
 /** Represents a level of the game. */
-function GameLevel(gameCanvas, levelJSON) {
+function GameLevel (gameCanvas, levelJSON) {
 	var self = this;
 
 	this.gameCanvas = gameCanvas;
@@ -390,49 +379,74 @@ function GameLevel(gameCanvas, levelJSON) {
 	this.objects = [];
 
 	/** Clear all intervals associated with objects in this level. */
-	this.clear_intervals = function() {
-		this.intervals.forEach(function(interval){
+	this.clear_intervals = function(){
+		this.intervals.forEach(function (interval) {
 			clearInterval(interval);
 		});
 	}
 
+	/** Add two walls and two platforms to the canvas
+		to form boundaries at the edges. */
+	this.load_borders = function(width, height){
+		this.add_line(0, 0, width, 0, true);
+		this.add_line(0, height, width, height);
+		this.add_wall(0, 0, height);
+		this.add_wall(width, 0, height);
+	}
+
+	/** Load current level settings to the canvas. */
+	this.load_JSON = function(){
+		this.add_boxes(this.levelJSON["boxes"]);
+		this.add_lines(this.levelJSON["lines"]);
+		this.add_walls(this.levelJSON["walls"]);
+		this.add_npcs(this.levelJSON["NPCs"]);
+	}
+
 	/** Add a box object to the gameCanvas. */
-	this.add_box = function (xLeft, xRight, yBottom, yHeight, isFatal, isEndpoint) {
+	this.add_box = function (xMin, yMin, xMax, yMax, isFatal, isEndpoint) {
 		var isFatal = isFatal || false;
 		var isEndpoint = isEndpoint || false;
-		var yTop = yBottom + yHeight;
+		var box = new CanvasShape(this.gameCanvas);
+		this.objects.push(box);
 
-		this.add_platform(xLeft, xRight, yTop, isFatal, isEndpoint);
-		this.add_platform(xLeft, xRight, yBottom);
-		this.add_wall(xLeft, yBottom, yHeight);
-		this.add_wall(xRight, yBottom, yHeight);
+		box.steps.push([xMin, yMin], [xMax, yMin], [xMax, yMax], [xMin, yMax]);
+
+		box.add_line(xMin, yMin, xMax, yMin, isFatal, isEndpoint);
+		box.add_line(xMin, yMax, xMax, yMax, isFatal, isEndpoint);
+		box.add_line(xMin, yMin, xMin, yMax, false, false);
+		box.add_line(xMax, yMin, xMax, yMax, false, false);
+
+		this.gameCanvas.wallAreas.push([xMin, yMin, yMax]);
+		this.gameCanvas.wallAreas.push([xMax, yMin, yMax]);
+		this.gameCanvas.platformAreas.push([xMin, xMax, yMin]);
+		this.gameCanvas.platformAreas.push([xMin, xMax, yMax]);
 	}
 
 	/** Add a list of box objects from JSON to this level. */
 	this.add_boxes = function (boxArgs) {
 		var boxArgs = boxArgs || [];
-		boxArgs.forEach(function (box){
-			self.add_box(box.xLeft, box.xRight, box.yBottom,
-					 	 box.yHeight, box.isFatal, box.isEndpoint);
+		boxArgs.forEach(function (box) {
+			self.add_box(box.xMin, box.yMin, box.xMax, box.yMax, 
+						 box.isFatal, box.isEndpoint);
 		});
 	}
 
-	/** Add a platform object to the gameCanvas. */
-	this.add_platform = function (xLeft, xRight, yBottom, isFatal, isEndpoint) {
+	/** Add a line to this shape. */
+	this.add_line = function (xMin, yMin, xMax, yMax, isFatal, isEndpoint) {
 		var isFatal = isFatal || false;
 		var isEndpoint = isEndpoint || false;
-		var newPlatform = new CanvasLine(this.gameCanvas, xLeft, yBottom, 
-									 	 xRight, yBottom, isFatal, isEndpoint);
-		this.objects.push(newPlatform);
-		this.gameCanvas.platformAreas.push([xLeft, xRight, yBottom]);
+		var line = new CanvasLine(this.gameCanvas, xMin, yMin, 
+							 	  xMax, yMax, isFatal, isEndpoint);
+		this.objects.push(line);
+		this.gameCanvas.platformAreas.push([xMin, xMax, yMin]);
 	}
 
-	/** Add a list of platform objects from JSON to this level. */
-	this.add_platforms = function (platformArgs) {
-		var platformArgs = platformArgs || [];
-		platformArgs.forEach(function (plat){
-			self.add_platform(plat.xLeft, plat.xRight, plat.yBottom, 
-							  plat.isFatal, plat.isEndpoint);
+	/** Add a list of line objects from JSON to this level. */
+	this.add_lines = function (lineArgs) {
+		var lineArgs = lineArgs || [];
+		lineArgs.forEach(function (line) {
+			self.add_line(line.xMin, line.yMin, line.xMax, line.yMax, 
+						  line.isFatal, line.isEndpoint);
 		});
 	}
 
@@ -447,7 +461,7 @@ function GameLevel(gameCanvas, levelJSON) {
 	/** Add a list of wall objects from JSON to this level. */
 	this.add_walls = function (wallArgs) {
 		var wallArgs = wallArgs || [];
-		wallArgs.forEach(function (wall){
+		wallArgs.forEach(function (wall) {
 			self.add_wall(wall.xPosition, wall.yBottom, wall.yHeight);
 		});
 	}
@@ -462,9 +476,48 @@ function GameLevel(gameCanvas, levelJSON) {
 	/** Add a list of npc objects from JSON to this level. */
 	this.add_npcs = function (npcArgs) {
 		var npcArgs = npcArgs || [];
-		npcArgs.forEach(function (npc){
+		npcArgs.forEach(function (npc) {
 			self.add_npc(npc.xPosition, npc.yPosition);
 		});
+	}
+}
+
+
+/** Represents a shape on the game canvas. */
+function CanvasShape (gameCanvas) {
+	var self = this;
+
+	this.gameCanvas = gameCanvas;
+	this.lines = [];
+	this.steps = [];
+
+	/** Add a line to this shape. */
+	this.add_line = function (xMin, yMin, xMax, yMax, isFatal, isEndpoint) {
+		var isFatal = isFatal || false;
+		var isEndpoint = isEndpoint || false;
+		var line = new CanvasLine(this.gameCanvas, xMin, yMin, 
+							 	  xMax, yMax, isFatal, isEndpoint);
+		this.lines.push(line);
+	}
+
+	/** Draw this shape on the canvas. */
+	this.draw = function(){
+		var context = this.gameCanvas.context;
+		var yOffset = this.gameCanvas.groundOffset;
+		context.beginPath();
+
+		start = this.steps[this.steps.length - 1];
+		context.moveTo(start[0], yOffset-start[1]);
+
+		this.steps.forEach(function (step) {
+			context.lineTo(step[0], yOffset-step[1]);
+		});
+
+		context.closePath();
+	    context.fillStyle = '#AFC5CC';
+	    context.fill();
+	    context.strokeStyle = '#222222';
+		context.stroke();
 	}
 }
 
@@ -483,7 +536,7 @@ function CanvasLine(gameCanvas, xStart, yStart, xEnd, yEnd, isFatal, isEndpoint)
 	this.tickRate = 500;
 
 	/** Draw this line on the canvas. */
-	this.draw = function () {
+	this.draw = function(){
 		var yStartFixed = this.gameCanvas.groundOffset - this.yStart;
 		var yEndFixed = this.gameCanvas.groundOffset - this.yEnd;
 
@@ -492,8 +545,8 @@ function CanvasLine(gameCanvas, xStart, yStart, xEnd, yEnd, isFatal, isEndpoint)
 		context.beginPath();
 		context.moveTo(this.xStart, yStartFixed);
 		context.lineTo(this.xEnd, yEndFixed);
-		context.stroke();
 		context.closePath();
+		context.stroke();
 	}
 
 	if (this.isFatal) {
@@ -505,10 +558,10 @@ function CanvasLine(gameCanvas, xStart, yStart, xEnd, yEnd, isFatal, isEndpoint)
 
 	/** Check if each active character in the gameWorld is on this 
 		line, and if it is, kill and respawn it. */
-	this.tick_check_fatalities = function() {
-		this.gameCanvas.characters.forEach(function(character){
+	this.tick_check_fatalities = function(){
+		this.gameCanvas.characters.forEach(function (character) {
 			if (character.is_on_line(self)) {
-				character.respawn();
+				character.respawn ();
 			}
 		});
 	}
@@ -522,8 +575,8 @@ function CanvasLine(gameCanvas, xStart, yStart, xEnd, yEnd, isFatal, isEndpoint)
 
 	/** Check if each active character in the gameWorld is on this 
 		line, and if it is, teleport it to the next level. */
-	this.tick_check_endpoints = function() {
-		this.gameCanvas.characters.forEach(function (character){
+	this.tick_check_endpoints = function(){
+		this.gameCanvas.characters.forEach(function (character) {
 			if (character.is_on_line(self)) {
 				self.gameCanvas.complete_level();
 			}
@@ -558,7 +611,7 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 	this.yCollisionHeight = 120;
 
 	/** Return true if this character is colliding with a wall. */
-	this.is_colliding = function() {
+	this.is_colliding = function(){
 		// Recalculate characters collision box based on direction
 		if (this.isFacingLeft) {
 			var xLeft = this.xPosition - this.xCollisionRadius;
@@ -584,7 +637,7 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 	this.check_wall_area = function (wallArea, charXLeft, charXRight) {
 		var wallX = wallArea[0];
 		var wallBottomY = wallArea[1];
-		var wallTopY = wallArea[1] + wallArea[2];
+		var wallTopY = wallArea[2];
 		var yMax = this.yPosition + this.yCollisionHeight;
 
 		if (charXLeft <= wallX
@@ -597,7 +650,7 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 
 	/** Return true if this character is on a platform
 		or would be the next time gravity ticks. */
-	this.is_at_yfloor = function() {
+	this.is_at_yfloor = function(){
 		this.find_yfloor();
 
 		var nextYPosition = this.yPosition - this.gameCanvas.gravityAmount;
@@ -612,9 +665,9 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 
 	/** Find the highest object below the character and set its
 		floor so that it does not fall below it. */
-	this.find_yfloor = function() {
+	this.find_yfloor = function(){
 		var newYFloor = 0;
-		this.gameCanvas.platformAreas.forEach(function (area){
+		this.gameCanvas.platformAreas.forEach(function (area) {
 			if (self.check_floor_area(area, newYFloor)) {
 				newYFloor = area[2];
 			}
@@ -682,7 +735,7 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 	this.images = SOLDIER.images;
 
 	/** Draw a single frame of this character on the canvas. */
-	this.draw = function() {
+	this.draw = function(){
 		var xPosAdjusted = this.xPosition;
 		var yPosAdjusted = (this.gameCanvas.groundOffset
 						    - this.yPosition);
@@ -717,7 +770,7 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 		// Draw each part of the character
  		this.draw_shadow(xPosAdjusted);
 
- 		imagesToDraw.forEach(function(image){
+ 		imagesToDraw.forEach(function (image) {
  			self.draw_image(image, xPosAdjusted, yPosAdjusted);
  		});
 
@@ -730,7 +783,7 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 	}
 
 	/** Draw a single image based on imageArgs, etc. */
-	this.draw_image = function(imageArgs, xPos, yPos) {
+	this.draw_image = function (imageArgs, xPos, yPos) {
 		var breathOffset = 0;
  		if (imageArgs["hasBreathing"]) {
  			breathOffset = this.currentBreath;
@@ -743,7 +796,7 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 	}
 
 	/** Draw the character"s shadow for the current frame. */
-	this.draw_shadow = function(centerX) {
+	this.draw_shadow = function (centerX) {
 		var centerY = this.gameCanvas.groundOffset - this.yFloor;
 		var shadowWidth = (100 - this.currentBreath
 						   - (this.yPosition - this.yFloor) * 0.8);
@@ -753,14 +806,14 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 	}
 
 	/** Draw the character"s eyes for the current frame. */
-	this.draw_eyes = function(xPos, yPos) {
+	this.draw_eyes = function (xPos, yPos) {
 	 	var eyeHeight = yPos - 88 - this.currentBreath;
 		this.draw_ellipse(xPos+6, eyeHeight, 6, this.curEyeHeight);
 		this.draw_ellipse(xPos+16, eyeHeight, 6, this.curEyeHeight);
 	}
 
 	/** Draw an ellipse on the canvas. */
-	this.draw_ellipse = function(centerX, centerY, width, height, color) {
+	this.draw_ellipse = function (centerX, centerY, width, height, color) {
 	 	var context = this.gameCanvas.context;
 
 		// Calculate coordinates for drawing curves
@@ -783,7 +836,7 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 	}
 
 	/** Determine whether the character should breathe in or out next. */
-	this.update_breath = function() {
+	this.update_breath = function(){
 		if (this.breathDirection === 1) {
 			// Breath in (character rises)
 			this.currentBreath -= this.breathInc;
@@ -800,7 +853,7 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 	}
 
 	/** Determine whether the character should blink next. */
-	this.update_blink = function() {
+	this.update_blink = function(){
 		this.eyeOpenTime += this.blinkUpdateTime;
 
 		if (this.eyeOpenTime >= this.timeBtwBlinks) {
@@ -809,7 +862,7 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 	}
 
 	/** Make the character blink over a few frames. */
-	this.animate_blink = function() {
+	this.animate_blink = function(){
 		this.curEyeHeight -= 1;
 		if (this.curEyeHeight <= 0) {
 			this.eyeOpenTime = 0;
@@ -820,7 +873,7 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 	}
 
 	/** Make the character jump as much as it is able. */
-	this.attempt_jump = function() {
+	this.attempt_jump = function(){
 		if (!this.isAirborne) {
 			this.isJumping = true;
 			var maxHeight = this.yPosition + this.jumpHeight;
@@ -835,7 +888,7 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 	}
 
 	/** Make the character ascend upward. */
-	this.ascend = function(maxHeight, jumpIncrement) {
+	this.ascend = function (maxHeight, jumpIncrement) {
 		if (!this.gameCanvas.isPaused) {
 			if (this.yPosition < maxHeight) {
 				this.yPosition += jumpIncrement;
@@ -848,13 +901,13 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 
 	/** Set the character to an airborne state so it falls
 		correctly and has the appropriate graphics. */
-	this.become_airborne = function() {
+	this.become_airborne = function(){
 		this.isAirborne = true;
 		this.landInterval = setInterval(this.attempt_land.bind(this), 50);
 	}
 
 	/** Land after hanging in the air from falling or jumping. */
-	this.attempt_land = function() {
+	this.attempt_land = function(){
 		if (this.is_at_yfloor()) {
 			this.isAirborne = false;
 			clearInterval(this.landInterval);
@@ -866,7 +919,7 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 
 	/** Attempt to stop all movement, unless further
 		user input is received. */
-	this.begin_movement_stop = function() {
+	this.begin_movement_stop = function(){
 		this.isPlanningMovement = false;
 
 		// Allow time for new input to be entered
@@ -875,7 +928,7 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 	}
 
 	/** Stop movement of this character unless it plans further moves. */
-	this.attempt_stop = function() {
+	this.attempt_stop = function(){
 		if (!this.isPlanningMovement 
 				&& !this.isAirborne) {
 			this.stop_moving();
@@ -883,14 +936,14 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 	}
 
 	/** Stop all movement. */
-	this.stop_moving = function() {
+	this.stop_moving = function(){
 		clearInterval(this.stepInterval);
 		this.isWalking = false;
 		this.isRunning = false;
 	}
 
 	/** Make the character walk forward until given a stop command. */
-	this.start_walking = function() {
+	this.start_walking = function(){
     	clearTimeout(this.stopMoveTimeout);
 		if (!this.is_colliding()) {
 			this.attempt_step();
@@ -904,7 +957,7 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 
 	/** If not colliding with an object, step in the direction 
 		the character is facing. */
-	this.attempt_step = function() {
+	this.attempt_step = function(){
 		if (!this.is_colliding()) {
 			var stepAmount = this.stepSize;
 			if (this.isFacingLeft) {
@@ -920,7 +973,7 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 	}
 
 	/** Make the character start running. */
-	this.start_running = function() {
+	this.start_running = function(){
 		if (!this.isRunning) {
 			this.isRunning = true;
 			this.runTimeout = setTimeout(this.stop_running.bind(this),
@@ -929,7 +982,7 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 	}
 
 	/** Stop running. */
-	this.stop_running = function() {
+	this.stop_running = function(){
 		this.isRunning = false;
 	}
 
@@ -938,7 +991,7 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 	this.ySpawn = this.yPosition;
 
 	/** Respawn the character. */
-	this.respawn = function() {
+	this.respawn = function(){
 		this.xPosition = this.xSpawn;
 		this.yPosition = this.ySpawn;
 		this.isFacingLeft = false;
@@ -952,18 +1005,18 @@ function GameCharacter(gameCanvas, xPosition, yPosition) {
 function KeyBindings(character) {
 	this.character = character;
 
-	this.bind_defaults = function() {
+	this.bind_defaults = function(){
 		var character = this.character;
 
 		// Bind keys for moving left
-	    Mousetrap.bind(["a", "left"], function() { 
+	    Mousetrap.bind(["a", "left"], function(){ 
 			character.isPlanningMovement = true;
 	    	character.isFacingLeft = true;
 			character.isWalking = true;
 	        character.start_walking();
 	        //console.log("left");
 	    });
-	    Mousetrap.bind(["a", "left"], function() {
+	    Mousetrap.bind(["a", "left"], function(){
 			if (character.isFacingLeft) {
 				character.begin_movement_stop();
 			}
@@ -971,14 +1024,14 @@ function KeyBindings(character) {
 	    }, "keyup");
 
 	    // Bind keys for moving right
-	    Mousetrap.bind(["d", "right"], function() {
+	    Mousetrap.bind(["d", "right"], function(){
 			character.isPlanningMovement = true;
 	    	character.isFacingLeft = false;
 			character.isWalking = true;
 	        character.start_walking();
 	        //console.log("right");
 	    });
-	    Mousetrap.bind(["d", "right"], function() {
+	    Mousetrap.bind(["d", "right"], function(){
 			if (!character.isFacingLeft) {
 				character.begin_movement_stop();
 			}
@@ -986,7 +1039,7 @@ function KeyBindings(character) {
 	    }, "keyup");
 
 	    // Bind keys for jumping
-	    Mousetrap.bind(["w", "up", "space"], function(e) {
+	    Mousetrap.bind(["w", "up", "space"], function (e) {
 	    	// Remove default behavior of buttons (page scrolling)
 	    	if (e.preventDefault()) {
 	    		e.preventDefault();
@@ -997,7 +1050,7 @@ function KeyBindings(character) {
 	    });
 
 	    // Bind keys for crouching
-	    Mousetrap.bind(["s", "down"], function(e) {
+	    Mousetrap.bind(["s", "down"], function (e) {
 	    	// Remove default behavior of buttons (page scrolling)
 	    	if (e.preventDefault()) {
 	    		e.preventDefault();
@@ -1009,17 +1062,17 @@ function KeyBindings(character) {
 	    });
 
 	    // Bind key for running
-	    Mousetrap.bind(["q", "capslock"], function() { 
+	    Mousetrap.bind(["q", "capslock"], function(){ 
 	        character.start_running();
 	    });
 
 	    // Bind key for respawning
-	    Mousetrap.bind("c", function() { 
-	        character.respawn();
+	    Mousetrap.bind("c", function(){ 
+	        character.respawn ();
 	    });
 
 	    // Bind key for pausing
-	    Mousetrap.bind("z", function() {
+	    Mousetrap.bind("z", function(){
 	    	var canvas = character.gameCanvas;
 	    	if (canvas.isPaused) {
 	    		canvas.unpause();
@@ -1029,30 +1082,19 @@ function KeyBindings(character) {
 	    });
 
 	    // Bind key for restarting the game
-	    Mousetrap.bind("x", function() { 
+	    Mousetrap.bind("x", function(){ 
 	        character.gameCanvas.reset_game();
 	    });
 	}
 
-	this.unbind_all = function() {
+	this.unbind_all = function(){
 		Mousetrap.unbind(["a", "left", "d", "right", "w", "up", "space",
 						  "s", "down", "q", "c", "z", "x", "capslock"]);
 	}
 }
 
 
-window.onload = function () {
+window.onload = function(){
 	var game = new GameCanvas(width=900, height=600, groundLevel=38);
-
-	game.add_to_DOM(document.getElementById("canvas-div"));
-	game.add_fps();
-	game.add_timer();
-	game.displayLevelName = true;
-	check_display_canvas();
-
-	LEVELS.forEach(function (level) {
-		game.add_level(level.name, level);
-	});
-
-	game.change_level("Level 1");
+	game.start();
 }
