@@ -3,7 +3,7 @@ MINIMUM_CANVAS_HEIGHT = 0;
 
 /** Called on screen resize. Hide the game canvas HTML element
 	if the screen is too small to display it. */
-function check_display_canvas() {
+function check_display_canvas () {
 	if (window.innerWidth < MINIMUM_CANVAS_WIDTH) {
 		document.getElementById("canvas").style.visibility = "hidden";
 		document.getElementById("canvas").height = 0;
@@ -68,7 +68,6 @@ function GameCanvas(width, height, groundLevel) {
 
 	/** Creates a base game canvas and attaches it to the DOM. */
 	this.add_to_DOM = function (element) {
-		this.canvas.style.visibility = "hidden";
 		this.canvas.setAttribute("width", this.canvasWidth);
 		this.canvas.setAttribute("height", this.canvasHeight);
 		this.canvas.setAttribute("id", "canvas");
@@ -1095,6 +1094,11 @@ function KeyBindings(character) {
 
 
 window.onload = function(){
-	var game = new GameCanvas(width=900, height=600, groundLevel=38);
-	game.start();
+	if (screen.width >= 900) {
+		var game = new GameCanvas(width=900, height=600, groundLevel=38);
+		window.addEventListener("resize", check_display_canvas);
+		game.start();
+	} else {
+		document.getElementById("canvas-message").style.visibility = "visible";
+	}
 }
