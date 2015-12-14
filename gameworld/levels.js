@@ -20,7 +20,7 @@ var LEVELS = [
         "ySpawn": 200,
         "boxes": [
             {"xMin": 0, "xMax": 200, "yMin": 0, "yMax": 200, }, 
-            {"xMin": 300, "xMax": 700, "yMin": 0, "yMax": 200, },
+            {"xMin": 300, "xMax": 660, "yMin": 0, "yMax": 200, },
             {"xMin": 800, "xMax": 900, "yMin": 0, "yMax": 200, "isEndpoint": true, },
         ],
         "NPCs": [
@@ -32,10 +32,10 @@ var LEVELS = [
         "xSpawn": 35,
         "ySpawn": 50,
         "boxes": [
-            {"xMin": 0, "xMax": 350, "yMin": 20, "yMax": 50, }, 
+            {"xMin": 0, "xMax": 350, "yMin": 0, "yMax": 50, }, 
             {"xMin": 400, "xMax": 550, "yMin": 50, "yMax": 80, },
             {"xMin": 600, "xMax": 750, "yMin": 80, "yMax": 110, }, 
-            {"xMin": 800, "xMax": 950, "yMin": 110, "yMax": 140, "isEndpoint": true},
+            {"xMin": 800, "xMax": 950, "yMin": 0, "yMax": 140, "isEndpoint": true},
         ],
     },
     {
@@ -44,7 +44,7 @@ var LEVELS = [
         "ySpawn": 400,
         "boxes": [
             {"xMin": 0, "xMax": 350, "yMin": 0, "yMax": 400, },
-            {"xMin": 800, "xMax": 950, "yMin": 20, "yMax": 50, "isEndpoint": true},
+            {"xMin": 800, "xMax": 950, "yMin": 0, "yMax": 50, "isEndpoint": true},
         ],
     },
     {
@@ -54,7 +54,7 @@ var LEVELS = [
         "boxes": [
             {"xMin": 0, "xMax": 200, "yMin": 0, "yMax": 200, }, 
             {"xMin": 400, "xMax": 700, "yMin": 20, "yMax": 40, },
-            {"xMin": 800, "xMax": 900, "yMin": 220, "yMax": 240, "isEndpoint": true},
+            {"xMin": 800, "xMax": 900, "yMin": 0, "yMax": 240, "isEndpoint": true},
         ],
         "lines": [
             {"xMin": 180, "xMax": 380, "yMin": 240, "yMax": 240, },

@@ -262,6 +262,20 @@ function GameCanvas(width, height, groundLevel) {
 
 	/** Draw informational elements on the canvas. */
 	this.draw_ui = function(){
+		var context = this.context;
+		context.beginPath();
+		context.moveTo(0, this.groundOffset);
+		context.lineTo(this.canvasWidth, this.groundOffset);
+		context.lineTo(this.canvasWidth, this.canvasHeight);
+		context.lineTo(0, this.canvasHeight);
+		context.lineTo(0, this.groundOffset);
+		context.closePath();
+	    context.fillStyle = '#DDD';
+	    context.fill();
+	    context.strokeStyle = '#000';
+		context.stroke();
+
+	    context.fillStyle = '#000';
 		this.context.font = "12px sans-serif";
 		if (this.displayLevelName) { this.draw_level_name(); }
 		if (this.displayFPS) { this.draw_fps(); }
@@ -387,10 +401,9 @@ function GameLevel (gameCanvas, levelJSON) {
 	/** Add two walls and two platforms to the canvas
 		to form boundaries at the edges. */
 	this.load_borders = function(width, height){
-		this.add_line(0, 0, width, 0, true);
-		this.add_line(0, height, width, height);
-		this.add_wall(0, 0, height);
-		this.add_wall(width, 0, height);
+		var background = '#F9F9F9';
+		var border = '#000';
+		this.add_box(0, 0, width, height, background, border, true);
 	}
 
 	/** Load current level settings to the canvas. */
@@ -402,10 +415,10 @@ function GameLevel (gameCanvas, levelJSON) {
 	}
 
 	/** Add a box object to the gameCanvas. */
-	this.add_box = function (xMin, yMin, xMax, yMax, isFatal, isEndpoint) {
+	this.add_box = function (xMin, yMin, xMax, yMax, fill, stroke, isFatal, isEndpoint) {
 		var isFatal = isFatal || false;
 		var isEndpoint = isEndpoint || false;
-		var box = new CanvasShape(this.gameCanvas);
+		var box = new CanvasShape(this.gameCanvas, fill, stroke);
 		this.objects.push(box);
 
 		box.steps.push([xMin, yMin], [xMax, yMin], [xMax, yMax], [xMin, yMax]);
@@ -426,7 +439,7 @@ function GameLevel (gameCanvas, levelJSON) {
 		var boxArgs = boxArgs || [];
 		boxArgs.forEach(function (box) {
 			self.add_box(box.xMin, box.yMin, box.xMax, box.yMax, 
-						 box.isFatal, box.isEndpoint);
+						 box.fill, box.stroke, box.isFatal, box.isEndpoint);
 		});
 	}
 
@@ -483,10 +496,12 @@ function GameLevel (gameCanvas, levelJSON) {
 
 
 /** Represents a shape on the game canvas. */
-function CanvasShape (gameCanvas) {
+function CanvasShape (gameCanvas, fill, stroke) {
 	var self = this;
 
 	this.gameCanvas = gameCanvas;
+	this.fill = fill || '#555559';
+	this.stroke = stroke || '#111114';
 	this.lines = [];
 	this.steps = [];
 
@@ -513,9 +528,9 @@ function CanvasShape (gameCanvas) {
 		});
 
 		context.closePath();
-	    context.fillStyle = '#AFC5CC';
+	    context.fillStyle = this.fill;
 	    context.fill();
-	    context.strokeStyle = '#222222';
+	    context.strokeStyle = this.stroke;
 		context.stroke();
 	}
 }
