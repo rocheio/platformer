@@ -1,7 +1,7 @@
 .header {
     background: #0F1831;
     color: #fff;
-    padding: 1em;
+    padding-bottom: 1em;
     margin: 0 auto;
     margin-bottom: 1%;
     border-bottom: 1px solid #777;
@@ -38,7 +38,7 @@ h1 {
     }
 
     .header {
-        padding: 1em;
+        padding: 0.5em 0 1em;
         margin: 0 auto;
         margin-bottom: 1%;
         text-align: center;
