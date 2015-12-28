@@ -8,9 +8,9 @@ function check_display_canvas () {
 		document.getElementById("canvas").style.display = "none";
 		document.getElementById("canvas").height = 0;
 		document.getElementById("canvas").width = 0;
-		document.getElementById("canvas-message").style.visibility = "visible";
+		document.getElementById("canvas-message").style.display = "block";
 	} else {
-		document.getElementById("canvas").style.visibility = "visible";
+		document.getElementById("canvas").style.display = "block";
 		document.getElementById("canvas").height = MINIMUM_CANVAS_HEIGHT;
 		document.getElementById("canvas").width = MINIMUM_CANVAS_WIDTH;
 		document.getElementById("canvas-message").style.display = "none";
