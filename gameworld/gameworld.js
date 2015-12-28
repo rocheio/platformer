@@ -5,7 +5,7 @@ MINIMUM_CANVAS_HEIGHT = 0;
 	if the screen is too small to display it. */
 function check_display_canvas () {
 	if (window.innerWidth < MINIMUM_CANVAS_WIDTH) {
-		document.getElementById("canvas").style.visibility = "hidden";
+		document.getElementById("canvas").style.display = "none";
 		document.getElementById("canvas").height = 0;
 		document.getElementById("canvas").width = 0;
 		document.getElementById("canvas-message").style.visibility = "visible";
@@ -13,7 +13,7 @@ function check_display_canvas () {
 		document.getElementById("canvas").style.visibility = "visible";
 		document.getElementById("canvas").height = MINIMUM_CANVAS_HEIGHT;
 		document.getElementById("canvas").width = MINIMUM_CANVAS_WIDTH;
-		document.getElementById("canvas-message").style.visibility = "hidden";
+		document.getElementById("canvas-message").style.display = "none";
 	}
 }
 

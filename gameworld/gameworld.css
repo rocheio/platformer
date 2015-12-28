@@ -1,49 +1,84 @@
+* {
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+}
+html, button, input, select, textarea,
+.pure-g [class *= "pure-u"] {
+    /* Set your content font stack here: */
+    font-family: "Segoe UI", Segoe, Tahoma, Geneva, sans-serif;
+}
+body {
+    background-color: #EEEEEE;
+}
+a {
+    text-decoration: none;
+    color: #0098D8;
+}
+a:hover, a:focus {
+    text-decoration: underline;
+}
+h1 {
+    margin-top: 0.5em;
+    margin-bottom: 0;
+}
 .header {
+    text-align: center;
     background: #0F1831;
     color: #fff;
-    padding-bottom: 1em;
+    padding: 1em;
     margin: 0 auto;
     margin-bottom: 1%;
     border-bottom: 1px solid #777;
 }
-
+.site-title {
+    margin: 0;
+    font-size: 2.2em;
+}
+.site-title a {
+    color: #FFF;
+    text-decoration: none;
+}
+.site-title a:hover {
+    color: #F21D41;
+}
+.site-tagline {
+    margin: 0;
+    font-size: 1.2em;
+    color: #82B3AE;
+}
 .panel {
     max-width: 910px;
     margin: 0 auto;
 }
-
 .canvas {
     border: 2px solid black;
     background: #FFF;
 }
-
 #canvas-message {
     text-align: center;
     font-weight: bold;
-    margin: 0 1em;
+    margin: 1em;
 }
-
 .content {
-    margin: 0;
+    padding: 0 1em;
 }
-
 h1 {
     margin: 0;
 }
+
 
 @media (min-width: 48em) {
     .content {
         padding: 0.5em 1em 0;
         margin: 0;
     }
-
     .header {
         padding: 0.5em 0 1em;
         margin: 0 auto;
-        margin-bottom: 1%;
+        margin-bottom: 1em;
         text-align: center;
     }
-
     .sidebar {
         position: static;
         border: none;

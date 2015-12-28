@@ -5,59 +5,56 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>JavaScript Side-Scroller</title>
   <link rel="stylesheet" type="text/css" 
-        href="http://yui.yahooapis.com/pure/0.6.0/pure-min.css">
+          href="http://yui.yahooapis.com/pure/0.6.0/pure-min.css">
   <link rel="stylesheet" type="text/css" 
-        href="http://yui.yahooapis.com/pure/0.6.0/grids-responsive-min.css">
+          href="http://yui.yahooapis.com/pure/0.6.0/grids-responsive-min.css">
   <link rel="stylesheet" type='text/css'
-        href="../index.css">
-  <link rel="stylesheet" type='text/css'
-        href="./gameworld.css">
+          href="./gameworld.css">
 </head>
 <body>
+<div class="header">
+  <h1 class="site-title">
+    <a href="../index.html">roche.io</a>
+  </h1>
+  <h2 class="site-tagline">javascript side-scroller</h2>
+</div>
 
-  <div class="header">
-    <h1 class="site-title">
-      <a href="../index.html">roche.io</a>
-    </h1>
-    <h2 class="site-tagline">javascript side-scroller</h2>
+<div class="panel">
+  <div id="canvas-div"></div>
+  <div id="canvas-message">
+    You must have a keyboard and a window width of more than 900 pixels to play. Please resize this window or come back later on a desktop or laptop computer.
   </div>
+</div>
 
-  <div id="canvas-panel" class="panel">
-    <div id="canvas-div"></div>
-    <div id="canvas-message">
-      Your window must be at least 900px wide to play. Please resize this window or come back later on a larger device.
-    </div>
+<div class="panel pure-g">
+  <div class="content pure-u-1 pure-u-md-1-2">
+    <h1>About:</h1>
+    <p>
+      I'm learning to design browser-based games from the ground up. For added motivation, I decided to build everything here in public. What you see is the game so far.
+      <br><br>
+      Current High Score - JNM - 12.0 seconds
+      <br><br>
+      You can follow my development
+      <a href="https://github.com/rocheio/rocheio.github.io/tree/master/gameworld" target="_blank">on Github.</a>
+    </p>
   </div>
-
-  <div class="panel pure-g">
-    <div class="content pure-u-1 pure-u-md-1-2">
-      <h1>About:</h1>
-      <p>
-        I'm learning to design browser-based games from the ground up. For added motivation, I decided to build everything here in public. What you see is the game so far.
-        <br><br>
-        Current High Score - JNM - 12.0 seconds
-        <br><br>
-        You can follow my development
-        <a href="https://github.com/rocheio/rocheio.github.io/tree/master/gameworld" target="_blank">on Github.</a>
-      </p>
-    </div>
-    <div class="content pure-u-1 pure-u-md-1-2">
-      <h1>Basic Controls:</h1>
-      <ul>
-        <li>[A, Left]: Move left</li>
-        <li>[D, Right]: Move right</li>
-        <li>[W, Up, Space]: Jump</li>
-        <li>[S, Down]: Stop movement</li>
-        <li>[Q, CapsLock]: Run</li>
-        <li>[Z]: Pause</li>
-        <li>[X]: Restart game</li>
-        <li>[C]: Respawn on current level</li>
-      </ul>
-    </div>
+  <div class="content pure-u-1 pure-u-md-1-2">
+    <h1>Basic Controls:</h1>
+    <ul>
+      <li>[A, Left]: Move left</li>
+      <li>[D, Right]: Move right</li>
+      <li>[W, Up, Space]: Jump</li>
+      <li>[S, Down]: Stop movement</li>
+      <li>[Q, CapsLock]: Run</li>
+      <li>[Z]: Pause</li>
+      <li>[X]: Restart game</li>
+      <li>[C]: Respawn on current level</li>
+    </ul>
   </div>
-  <script type="text/javascript" src="../resources/mousetrap.js"></script>
-  <script type="text/javascript" src="levels.js"></script>
-  <script type="text/javascript" src="characters.js"></script>
-  <script type="text/javascript" src="gameworld.js"></script>
+</div>
+<script type="text/javascript" src="../resources/mousetrap.js"></script>
+<script type="text/javascript" src="levels.js"></script>
+<script type="text/javascript" src="characters.js"></script>
+<script type="text/javascript" src="gameworld.js"></script>
 </body>
 </html>
